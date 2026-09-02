@@ -3,3734 +3,1642 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ParallelLoop.v</title>
+  <title>LoopUnroll.v</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/polygen/ParallelLoop.v</code></h1>
-  <pre>Require Import ZArith.
-Require Import List.
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/polygen/LoopUnroll.v</code></h1>
+  <pre>Require Import List.
 Require Import Bool.
 Require Import Lia.
-Require Import Psatz.
-Require Import Result.
+Require Import ZArith.
 Import ListNotations.
 
-Require Import InstrTy.
-Require Import Loop.
 Require Import Misc.
-Require Import Linalg.
-Require Import LibTactics.
+Require Import PolIRs.
+Require Import LoopSingletonCleanup.
 
-Open Scope Z_scope.
-Open Scope list_scope.
+Module LoopUnroll (PolIRs: POLIRS).
 
-Module ParallelLoop (IInstr : INSTR).
+Module Instr := PolIRs.Instr.
+Module State := PolIRs.State.
+Module Loop := PolIRs.Loop.
+Module Subst := LoopSingletonCleanup PolIRs.
 
-Module Instr := IInstr.
-Module BaseLoop := Loop IInstr.
-Module ILSema := BaseLoop.ILSema.
-Module Ty := IInstr.Ty.
-
-(** * Annotated loop syntax and transformations *)
-
-Definition ident := IInstr.ident.
-Definition instr := IInstr.t.
-Definition mem := IInstr.State.t.
-Definition expr := BaseLoop.expr.
-Definition test := BaseLoop.test.
-Definition InstrPoint := ILSema.InstrPoint.
-
-Inductive loop_mode :=
-| SeqMode
-| ParMode
-| VecMode.
-
-Inductive stmt :=
-| Loop : loop_mode -&gt; option nat -&gt; expr -&gt; expr -&gt; stmt -&gt; stmt
-| Instr : instr -&gt; list expr -&gt; stmt
-| Seq : stmt_list -&gt; stmt
-| Guard : test -&gt; stmt -&gt; stmt
-with stmt_list :=
-| SNil : stmt_list
-| SCons : stmt -&gt; stmt_list -&gt; stmt_list.
-
-Definition t := (stmt * list ident * list (ident * Ty.t))%type.
-
-Fixpoint erase_stmt (s : stmt) : BaseLoop.stmt :=
-  match s with
-  | Loop _ _ lb ub body =&gt; BaseLoop.Loop lb ub (erase_stmt body)
-  | Instr i es =&gt; BaseLoop.Instr i es
-  | Seq ss =&gt; BaseLoop.Seq (erase_stmt_list ss)
-  | Guard tst body =&gt; BaseLoop.Guard tst (erase_stmt body)
-  end
-with erase_stmt_list (ss : stmt_list) : BaseLoop.stmt_list :=
-  match ss with
-  | SNil =&gt; BaseLoop.SNil
-  | SCons s ss&#x27; =&gt; BaseLoop.SCons (erase_stmt s) (erase_stmt_list ss&#x27;)
-  end.
-
-Definition erase_parallel (p : t) : BaseLoop.t :=
-  let &#x27;(s, ctxt, vars) := p in
-  (erase_stmt s, ctxt, vars).
-
-Fixpoint parallelize_dim_stmt (d : nat) (s : stmt) : stmt :=
-  match s with
-  | Loop SeqMode (Some d&#x27;) lb ub body =&gt;
-      Loop (if Nat.eqb d d&#x27; then ParMode else SeqMode)
-           (Some d&#x27;)
-           lb
-           ub
-           (parallelize_dim_stmt d body)
-  | Loop mode od lb ub body =&gt;
-      Loop mode od lb ub (parallelize_dim_stmt d body)
-  | Instr i es =&gt; Instr i es
-  | Seq ss =&gt; Seq (parallelize_dim_stmts d ss)
-  | Guard tst body =&gt; Guard tst (parallelize_dim_stmt d body)
-  end
-with parallelize_dim_stmts (d : nat) (ss : stmt_list) : stmt_list :=
-  match ss with
-  | SNil =&gt; SNil
-  | SCons s ss&#x27; =&gt; SCons (parallelize_dim_stmt d s) (parallelize_dim_stmts d ss&#x27;)
-  end.
-
-Definition parallelize_dim (d : nat) (p : t) : t :=
-  let &#x27;(s, ctxt, vars) := p in
-  (parallelize_dim_stmt d s, ctxt, vars).
-
-Fixpoint vectorize_dim_stmt (d : nat) (s : stmt) : stmt :=
-  match s with
-  | Loop SeqMode (Some d&#x27;) lb ub body =&gt;
-      Loop (if Nat.eqb d d&#x27; then VecMode else SeqMode)
-           (Some d&#x27;)
-           lb
-           ub
-           (vectorize_dim_stmt d body)
-  | Loop mode od lb ub body =&gt;
-      Loop mode od lb ub (vectorize_dim_stmt d body)
-  | Instr i es =&gt; Instr i es
-  | Seq ss =&gt; Seq (vectorize_dim_stmts d ss)
-  | Guard tst body =&gt; Guard tst (vectorize_dim_stmt d body)
-  end
-with vectorize_dim_stmts (d : nat) (ss : stmt_list) : stmt_list :=
-  match ss with
-  | SNil =&gt; SNil
-  | SCons s ss&#x27; =&gt; SCons (vectorize_dim_stmt d s) (vectorize_dim_stmts d ss&#x27;)
-  end.
-
-Definition vectorize_dim (d : nat) (p : t) : t :=
-  let &#x27;(s, ctxt, vars) := p in
-  (vectorize_dim_stmt d s, ctxt, vars).
-
-Fixpoint has_loopb_stmt (s : stmt) : bool
-with has_loopb_stmts (ss : stmt_list) : bool.
-Proof.
-  - destruct s.
-    + exact true.
-    + exact false.
-    + exact (has_loopb_stmts s).
-    + exact (has_loopb_stmt s).
-  - destruct ss.
-    + exact false.
-    + exact (has_loopb_stmt s || has_loopb_stmts ss).
-Defined.
-
-Fixpoint has_vector_modeb_stmt (s : stmt) : bool
-with has_vector_modeb_stmts (ss : stmt_list) : bool.
-Proof.
-  - destruct s.
-    + destruct l.
-      * exact (has_vector_modeb_stmt s).
-      * exact (has_vector_modeb_stmt s).
-      * exact true.
-    + exact false.
-    + exact (has_vector_modeb_stmts s).
-    + exact (has_vector_modeb_stmt s).
-  - destruct ss.
-    + exact false.
-    + exact (has_vector_modeb_stmt s || has_vector_modeb_stmts ss).
-Defined.
-
-Fixpoint vector_modes_innermostb_stmt (s : stmt) : bool
-with vector_modes_innermostb_stmts (ss : stmt_list) : bool.
-Proof.
-  - destruct s.
-    + destruct l.
-      * exact (vector_modes_innermostb_stmt s).
-      * exact (vector_modes_innermostb_stmt s).
-      * exact (negb (has_loopb_stmt s)).
-    + exact true.
-    + exact (vector_modes_innermostb_stmts s).
-    + exact (vector_modes_innermostb_stmt s).
-  - destruct ss.
-    + exact true.
-    + exact (vector_modes_innermostb_stmt s &amp;&amp; vector_modes_innermostb_stmts ss).
-Defined.
-
-(** A vector annotation is useful only when at least one loop is annotated, and
-    it is backend-safe only when every annotated loop is structurally
-    innermost. *)
-Definition vector_annotations_innermostb (p : t) : bool :=
-  let &#x27;(s, _, _) := p in
-  vector_modes_innermostb_stmt s &amp;&amp; has_vector_modeb_stmt s.
-
-Fixpoint of_loop_stmt (s : BaseLoop.stmt) : stmt :=
-  match s with
-  | BaseLoop.Loop lb ub body =&gt; Loop SeqMode None lb ub (of_loop_stmt body)
-  | BaseLoop.Instr i es =&gt; Instr i es
-  | BaseLoop.Seq ss =&gt; Seq (of_loop_stmt_list ss)
-  | BaseLoop.Guard tst body =&gt; Guard tst (of_loop_stmt body)
-  end
-with of_loop_stmt_list (ss : BaseLoop.stmt_list) : stmt_list :=
-  match ss with
-  | BaseLoop.SNil =&gt; SNil
-  | BaseLoop.SCons s ss&#x27; =&gt; SCons (of_loop_stmt s) (of_loop_stmt_list ss&#x27;)
-  end.
-
-Definition of_loop (p : BaseLoop.t) : t :=
-  let &#x27;(s, ctxt, vars) := p in
-  (of_loop_stmt s, ctxt, vars).
-
-Fixpoint all_origin_none_stmt (s : stmt) : Prop :=
-  match s with
-  | Loop _ od _ _ body =&gt; od = None /\ all_origin_none_stmt body
-  | Instr _ _ =&gt; True
-  | Seq ss =&gt; all_origin_none_stmts ss
-  | Guard _ body =&gt; all_origin_none_stmt body
-  end
-with all_origin_none_stmts (ss : stmt_list) : Prop :=
-  match ss with
-  | SNil =&gt; True
-  | SCons s ss&#x27; =&gt; all_origin_none_stmt s /\ all_origin_none_stmts ss&#x27;
-  end.
-
-Definition all_origin_none (p : t) : Prop :=
-  let &#x27;(s, _, _) := p in all_origin_none_stmt s.
-
-Inductive seq_trace : stmt -&gt; list Z -&gt; list InstrPoint -&gt; Prop :=
-| STInstr : forall i es env,
-    seq_trace (Instr i es) env [BaseLoop.mk_instr_point i es env]
-| STSeqStmt : forall env sts tr,
-    seq_traces sts env tr -&gt;
-    seq_trace (Seq sts) env tr
-| STGuardTrue : forall env tst st tr,
-    BaseLoop.eval_test env tst = true -&gt;
-    seq_trace st env tr -&gt;
-    seq_trace (Guard tst st) env tr
-| STGuardFalse : forall env tst st,
-    BaseLoop.eval_test env tst = false -&gt;
-    seq_trace (Guard tst st) env []
-| STLoop : forall mode od lb ub body env zs trs tr,
-    zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) -&gt;
-    Forall2 (fun z tri =&gt; seq_trace body (z :: env) tri) zs trs -&gt;
-    tr = concat trs -&gt;
-    seq_trace (Loop mode od lb ub body) env tr
-with seq_traces : stmt_list -&gt; list Z -&gt; list InstrPoint -&gt; Prop :=
-| STTracesNil : forall env,
-    seq_traces SNil env []
-| STTracesCons : forall env st sts tr1 tr2,
-    seq_trace st env tr1 -&gt;
-    seq_traces sts env tr2 -&gt;
-    seq_traces (SCons st sts) env (tr1 ++ tr2).
-
-(** * Raw interleavings and ordering evidence
-
-    [interleave_family] is the unrestricted, order-preserving shuffle relation.
-    [family_ordered_permutable] is a separate proof fact used only when a
-    concrete trace is serialized. *)
-
-Inductive interleave_family : list (list InstrPoint) -&gt; list InstrPoint -&gt; Prop :=
-| IF_nil :
-    interleave_family [] []
-| IF_skip_nil : forall trs out,
-    interleave_family trs out -&gt;
-    interleave_family ([] :: trs) out
-| IF_take : forall pre x xs post out,
-    interleave_family (pre ++ xs :: post) out -&gt;
-    interleave_family (pre ++ (x :: xs) :: post) (x :: out).
-
-Definition family_ordered_permutable (trs : list (list InstrPoint)) : Prop :=
-  forall pre1 tr1 pre2 tr2 post ip1 ip2,
-    trs = pre1 ++ tr1 :: pre2 ++ tr2 :: post -&gt;
-    In ip1 tr1 -&gt;
-    In ip2 tr2 -&gt;
-    ILSema.Permutable ip1 ip2.
-
-Lemma family_ordered_permutable_tail :
-  forall tr trs,
-    family_ordered_permutable (tr :: trs) -&gt;
-    family_ordered_permutable trs.
-Proof.
-  intros tr trs Hordered pre1 tr1 pre2 tr2 post ip1 ip2 Hshape Hin1 Hin2.
-  eapply Hordered with
-      (pre1 := tr :: pre1) (tr1 := tr1) (pre2 := pre2)
-      (tr2 := tr2) (post := post); eauto.
-  simpl. now rewrite Hshape.
-Qed.
-
-Fixpoint family_ordered_permutable_rec
-  (trs : list (list InstrPoint)) : Prop :=
-  match trs with
-  | [] =&gt; True
-  | tr :: trs&#x27; =&gt;
-      (forall ip1 ip2,
-          In ip1 tr -&gt;
-          In ip2 (concat trs&#x27;) -&gt;
-          ILSema.Permutable ip1 ip2) /\
-      family_ordered_permutable_rec trs&#x27;
-  end.
-
-Lemma family_ordered_permutable_rec_of_ordered :
-  forall trs,
-    family_ordered_permutable trs -&gt;
-    family_ordered_permutable_rec trs.
-Proof.
-  induction trs as [|tr trs IH]; intros Hordered; simpl.
-  - exact I.
-  - split.
-    + intros ip1 ip2 Hin1 Hin2.
-      apply in_concat in Hin2.
-      destruct Hin2 as [tr2 [Htr2 Hin2]].
-      apply in_split in Htr2.
-      destruct Htr2 as [pre2 [post Hshape]].
-      eapply Hordered with
-          (pre1 := []) (tr1 := tr) (pre2 := pre2)
-          (tr2 := tr2) (post := post); eauto.
-      simpl. now rewrite Hshape.
-    + apply IH.
-      eapply family_ordered_permutable_tail; eauto.
-Qed.
-
-Lemma family_ordered_permutable_ordered_of_rec :
-  forall trs,
-    family_ordered_permutable_rec trs -&gt;
-    family_ordered_permutable trs.
-Proof.
-  induction trs as [|tr trs IH];
-    intros Hrec pre1 tr1 pre2 tr2 post ip1 ip2 Hshape Hin1 Hin2.
-  - destruct pre1; discriminate.
-  - simpl in Hrec.
-    destruct Hrec as [Hhead Htail].
-    destruct pre1 as [|tr0 pre1].
-    + simpl in Hshape.
-      pose proof
-        (f_equal (@tl (list InstrPoint)) Hshape) as Htail_shape.
-      simpl in Htail_shape.
-      inversion Hshape; subst tr1.
-      apply Hhead with (ip1 := ip1) (ip2 := ip2); auto.
-      apply in_concat.
-      exists tr2.
-      split; auto.
-      rewrite Htail_shape.
-      apply in_or_app.
-      right. simpl. auto.
-    + simpl in Hshape.
-      inversion Hshape; subst tr0.
-      eapply IH; eauto.
-Qed.
-
-Lemma concat_pop_in :
-  forall (pre : list (list InstrPoint)) (x : InstrPoint) xs post ip,
-    In ip (concat (pre ++ xs :: post)) -&gt;
-    In ip (concat (pre ++ (x :: xs) :: post)).
-Proof.
-  induction pre as [|tr pre IH]; intros x xs post ip Hin; simpl in *.
-  - apply in_app_or in Hin.
-    destruct Hin as [Hin | Hin].
-    + right. apply in_or_app. left. exact Hin.
-    + right. apply in_or_app. right. exact Hin.
-  - apply in_app_or in Hin.
-    apply in_or_app.
-    destruct Hin as [Hin | Hin].
-    + left. exact Hin.
-    + right. eapply IH; eauto.
-Qed.
-
-Lemma family_ordered_permutable_rec_pop :
-  forall pre x xs post,
-    family_ordered_permutable_rec (pre ++ (x :: xs) :: post) -&gt;
-    family_ordered_permutable_rec (pre ++ xs :: post).
-Proof.
-  induction pre as [|tr pre IH]; intros x xs post Hordered; simpl in *.
-  - destruct Hordered as [Hhead Htail].
-    split.
-    + intros ip1 ip2 Hin1 Hin2.
-      eapply Hhead.
-      * right. exact Hin1.
-      * exact Hin2.
-    + exact Htail.
-  - destruct Hordered as [Hhead Htail].
-    split.
-    + intros ip1 ip2 Hin1 Hin2.
-      eapply Hhead.
-      * exact Hin1.
-      * eapply concat_pop_in; eauto.
-    + eapply IH; eauto.
-Qed.
-
-Lemma family_ordered_permutable_pop :
-  forall pre x xs post,
-    family_ordered_permutable (pre ++ (x :: xs) :: post) -&gt;
-    family_ordered_permutable (pre ++ xs :: post).
-Proof.
-  intros pre x xs post Hordered.
-  apply family_ordered_permutable_ordered_of_rec.
-  eapply family_ordered_permutable_rec_pop with (x := x).
-  apply family_ordered_permutable_rec_of_ordered.
-  exact Hordered.
-Qed.
-
-Lemma family_ordered_permutable_before :
-  forall pre x xs post,
-    family_ordered_permutable (pre ++ (x :: xs) :: post) -&gt;
-    forall y,
-      In y (concat pre) -&gt;
-      ILSema.Permutable y x.
-Proof.
-  induction pre as [|tr pre IH]; intros x xs post Hordered y Hin; simpl in Hin.
-  - contradiction.
-  - apply in_app_or in Hin.
-    destruct Hin as [Hin | Hin].
-    + eapply (Hordered [] tr pre (x :: xs) post y x); simpl; eauto.
-    + eapply IH; eauto.
-      eapply family_ordered_permutable_tail; eauto.
-Qed.
-
-Inductive interleave_safe : list (list InstrPoint) -&gt; list InstrPoint -&gt; Prop :=
-| IS_nil :
-    interleave_safe [] []
-| IS_skip_nil : forall trs out,
-    interleave_safe trs out -&gt;
-    interleave_safe ([] :: trs) out
-| IS_take : forall pre x xs post out,
-    (forall y, In y (concat pre) -&gt; ILSema.Permutable y x) -&gt;
-    interleave_safe (pre ++ xs :: post) out -&gt;
-    interleave_safe (pre ++ (x :: xs) :: post) (x :: out).
-
-Theorem family_ordered_interleave_safe :
-  forall trs out,
-    family_ordered_permutable trs -&gt;
-    interleave_family trs out -&gt;
-    interleave_safe trs out.
-Proof.
-  intros trs out Hordered Hinter.
-  revert Hordered.
-  induction Hinter; intros Hordered.
-  - constructor.
-  - constructor.
-    apply IHHinter.
-    eapply family_ordered_permutable_tail; eauto.
-  - econstructor.
-    + eapply family_ordered_permutable_before; eauto.
-    + apply IHHinter.
-      eapply family_ordered_permutable_pop; eauto.
-Qed.
-
-(** * Raw and ordered trace semantics
-
-    [par_trace] admits every [interleave_family] at a parallel loop.  Its
-    companion [ordered_par_trace] records certificate-derived commutativity for
-    one actual derivation; forgetting the companion recovers the raw trace. *)
-
-Inductive par_trace : stmt -&gt; list Z -&gt; list InstrPoint -&gt; Prop :=
-| PTInstr : forall i es env,
-    par_trace (Instr i es) env [BaseLoop.mk_instr_point i es env]
-| PTSeqStmt : forall env sts tr,
-    par_traces sts env tr -&gt;
-    par_trace (Seq sts) env tr
-| PTGuardTrue : forall env tst st tr,
-    BaseLoop.eval_test env tst = true -&gt;
-    par_trace st env tr -&gt;
-    par_trace (Guard tst st) env tr
-| PTGuardFalse : forall env tst st,
-    BaseLoop.eval_test env tst = false -&gt;
-    par_trace (Guard tst st) env []
-| PTLoopSeq : forall od lb ub body env zs trs tr,
-    zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) -&gt;
-    Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) zs trs -&gt;
-    tr = concat trs -&gt;
-    par_trace (Loop SeqMode od lb ub body) env tr
-| PTLoopVec : forall od lb ub body env zs trs tr,
-    zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) -&gt;
-    Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) zs trs -&gt;
-    tr = concat trs -&gt;
-    par_trace (Loop VecMode od lb ub body) env tr
-| PTLoopPar : forall d lb ub body env zs trs tr,
-    zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) -&gt;
-    Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) zs trs -&gt;
-    interleave_family trs tr -&gt;
-    par_trace (Loop ParMode (Some d) lb ub body) env tr
-with par_traces : stmt_list -&gt; list Z -&gt; list InstrPoint -&gt; Prop :=
-| PTTracesNil : forall env,
-    par_traces SNil env []
-| PTTracesCons : forall env st sts tr1 tr2,
-    par_trace st env tr1 -&gt;
-    par_traces sts env tr2 -&gt;
-    par_traces (SCons st sts) env (tr1 ++ tr2).
-
-(** A derivation-specific ordering certificate for a parallel trace.  The raw
-    trace relation above continues to accept every interleaving.  This companion
-    records exactly the recursive ordering facts needed to refine one concrete
-    trace to sequential execution.  The raw [Forall2] premises make forgetting
-    the certificate independent of the nested proof structure. *)
-Inductive ordered_par_trace : stmt -&gt; list Z -&gt; list InstrPoint -&gt; Prop :=
-| OPTInstr : forall i es env,
-    ordered_par_trace (Instr i es) env [BaseLoop.mk_instr_point i es env]
-| OPTSeqStmt : forall env sts tr,
-    ordered_par_traces sts env tr -&gt;
-    ordered_par_trace (Seq sts) env tr
-| OPTGuardTrue : forall env tst st tr,
-    BaseLoop.eval_test env tst = true -&gt;
-    ordered_par_trace st env tr -&gt;
-    ordered_par_trace (Guard tst st) env tr
-| OPTGuardFalse : forall env tst st,
-    BaseLoop.eval_test env tst = false -&gt;
-    ordered_par_trace (Guard tst st) env []
-| OPTLoopSeq : forall od lb ub body env zs trs tr,
-    zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) -&gt;
-    Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) zs trs -&gt;
-    Forall2 (fun z tri =&gt; ordered_par_trace body (z :: env) tri) zs trs -&gt;
-    tr = concat trs -&gt;
-    ordered_par_trace (Loop SeqMode od lb ub body) env tr
-| OPTLoopVec : forall od lb ub body env zs trs tr,
-    zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) -&gt;
-    Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) zs trs -&gt;
-    Forall2 (fun z tri =&gt; ordered_par_trace body (z :: env) tri) zs trs -&gt;
-    tr = concat trs -&gt;
-    ordered_par_trace (Loop VecMode od lb ub body) env tr
-| OPTLoopPar : forall d lb ub body env zs trs tr,
-    zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) -&gt;
-    Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) zs trs -&gt;
-    Forall2 (fun z tri =&gt; ordered_par_trace body (z :: env) tri) zs trs -&gt;
-    family_ordered_permutable trs -&gt;
-    interleave_family trs tr -&gt;
-    ordered_par_trace (Loop ParMode (Some d) lb ub body) env tr
-with ordered_par_traces : stmt_list -&gt; list Z -&gt; list InstrPoint -&gt; Prop :=
-| OPTTracesNil : forall env,
-    ordered_par_traces SNil env []
-| OPTTracesCons : forall env st sts tr1 tr2,
-    ordered_par_trace st env tr1 -&gt;
-    ordered_par_traces sts env tr2 -&gt;
-    ordered_par_traces (SCons st sts) env (tr1 ++ tr2).
-
-Lemma ordered_par_trace_forget :
-  forall s env tr,
-    ordered_par_trace s env tr -&gt;
-    par_trace s env tr
-with ordered_par_traces_forget :
-  forall ss env tr,
-    ordered_par_traces ss env tr -&gt;
-    par_traces ss env tr.
-Proof.
-  - intros s env tr Hordered.
-    destruct Hordered.
-    + constructor.
-    + constructor. eapply ordered_par_traces_forget; eauto.
-    + eapply PTGuardTrue; eauto.
-    + eapply PTGuardFalse; eauto.
-    + eapply PTLoopSeq; eauto.
-    + eapply PTLoopVec; eauto.
-    + eapply PTLoopPar; eauto.
-  - intros ss env tr Hordered.
-    destruct Hordered.
-    + constructor.
-    + econstructor.
-      * eapply ordered_par_trace_forget; eauto.
-      * eapply ordered_par_traces_forget; eauto.
-Qed.
-
-Fixpoint parallel_families_ordered_stmt (s : stmt) : Prop :=
-  match s with
-  | Loop ParMode (Some _) lb ub body =&gt;
-      parallel_families_ordered_stmt body /\
-      (forall env zs trs,
-          zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) -&gt;
-          Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) zs trs -&gt;
-          family_ordered_permutable trs)
-  | Loop _ _ _ _ body =&gt; parallel_families_ordered_stmt body
-  | Instr _ _ =&gt; True
-  | Seq ss =&gt; parallel_families_ordered_stmts ss
-  | Guard _ body =&gt; parallel_families_ordered_stmt body
-  end
-with parallel_families_ordered_stmts (ss : stmt_list) : Prop :=
-  match ss with
-  | SNil =&gt; True
-  | SCons s ss&#x27; =&gt;
-      parallel_families_ordered_stmt s /\
-      parallel_families_ordered_stmts ss&#x27;
-  end.
-
-Definition parallel_families_ordered (p : t) : Prop :=
-  let &#x27;(s, _, _) := p in parallel_families_ordered_stmt s.
-
-Definition loop_semantics (s : stmt) (env : list Z) (mem1 mem2 : mem) : Prop :=
-  exists tr,
-    par_trace s env tr /\
-    ILSema.instr_point_list_semantics tr mem1 mem2.
-
-Inductive semantics : t -&gt; mem -&gt; mem -&gt; Prop :=
-| PLSemaIntro : forall loop_ext loop ctxt vars env mem1 mem2,
-    loop_ext = (loop, ctxt, vars) -&gt;
-    IInstr.Compat vars mem1 -&gt;
-    IInstr.NonAlias mem1 -&gt;
-    IInstr.InitEnv ctxt (rev env) mem1 -&gt;
-    loop_semantics loop env mem1 mem2 -&gt;
-    semantics loop_ext mem1 mem2.
-
-(** The raw semantics remains the executable meaning of a parallel program.
-    [ordered_semantics] is a proof companion for a particular execution; it is
-    constructed only after the chosen trace has been justified. *)
-Definition ordered_loop_semantics
-    (s : stmt) (env : list Z) (mem1 mem2 : mem) : Prop :=
-  exists tr,
-    ordered_par_trace s env tr /\
-    ILSema.instr_point_list_semantics tr mem1 mem2.
-
-Inductive ordered_semantics : t -&gt; mem -&gt; mem -&gt; Prop :=
-| OPLSemaIntro : forall loop_ext loop ctxt vars env mem1 mem2,
-    loop_ext = (loop, ctxt, vars) -&gt;
-    IInstr.Compat vars mem1 -&gt;
-    IInstr.NonAlias mem1 -&gt;
-    IInstr.InitEnv ctxt (rev env) mem1 -&gt;
-    ordered_loop_semantics loop env mem1 mem2 -&gt;
-    ordered_semantics loop_ext mem1 mem2.
-
-Lemma ordered_loop_semantics_forget :
-  forall s env mem1 mem2,
-    ordered_loop_semantics s env mem1 mem2 -&gt;
-    loop_semantics s env mem1 mem2.
-Proof.
-  intros s env mem1 mem2 [tr [Hordered Hsem]].
-  exists tr. split; auto.
-  eapply ordered_par_trace_forget; eauto.
-Qed.
-
-Lemma ordered_semantics_forget :
-  forall p mem1 mem2,
-    ordered_semantics p mem1 mem2 -&gt;
-    semantics p mem1 mem2.
-Proof.
-  intros p mem1 mem2 Hordered.
-  inversion Hordered; subst.
-  econstructor; eauto.
-  eapply ordered_loop_semantics_forget; eauto.
-Qed.
-
-(** Compatibility bridge for clients that already establish the stronger
-    program-wide invariant.  New checked code-generation paths can instead
-    construct [ordered_par_trace] directly for the execution at hand. *)
-Lemma ordered_par_trace_forall2_of_global :
-  forall body env,
-    (forall env&#x27; tr,
-        parallel_families_ordered_stmt body -&gt;
-        par_trace body env&#x27; tr -&gt;
-        ordered_par_trace body env&#x27; tr) -&gt;
-    parallel_families_ordered_stmt body -&gt;
-    forall zs trs,
-      Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) zs trs -&gt;
-      Forall2 (fun z tri =&gt; ordered_par_trace body (z :: env) tri) zs trs.
-Proof.
-  intros body env Hbody Hglobal zs trs Hfor.
-  induction Hfor as [|z tr zs&#x27; trs&#x27; Htrace Hfor IH].
-  - apply Forall2_nil.
-  - eapply Forall2_cons.
-    + eapply Hbody; eauto.
-    + exact IH.
-Qed.
-
-Lemma ordered_par_trace_of_global :
-  forall s env tr,
-    parallel_families_ordered_stmt s -&gt;
-    par_trace s env tr -&gt;
-    ordered_par_trace s env tr
-with ordered_par_traces_of_global :
-  forall ss env tr,
-    parallel_families_ordered_stmts ss -&gt;
-    par_traces ss env tr -&gt;
-    ordered_par_traces ss env tr.
-Proof.
-  - intros s.
-    induction s as [mode od lb ub body IHbody|i es|ss|t body IHbody];
-      intros env tr Hglobal Htrace.
-    + inversion Htrace as
-          [| | | |od&#x27; lb&#x27; ub&#x27; body&#x27; env&#x27; zs trs tr&#x27; Hzs Hfor Hconcat
-           |od&#x27; lb&#x27; ub&#x27; body&#x27; env&#x27; zs trs tr&#x27; Hzs Hfor Hconcat
-           |d lb&#x27; ub&#x27; body&#x27; env&#x27; zs trs tr&#x27; Hzs Hfor Hinter];
-        subst.
-      * simpl in Hglobal.
-        pose proof
-          (ordered_par_trace_forall2_of_global
-             body env IHbody Hglobal _ _ Hfor) as Hordered_for.
-        eapply OPTLoopSeq; eauto.
-      * simpl in Hglobal.
-        pose proof
-          (ordered_par_trace_forall2_of_global
-             body env IHbody Hglobal _ _ Hfor) as Hordered_for.
-        eapply OPTLoopVec; eauto.
-      * simpl in Hglobal.
-        destruct Hglobal as [Hglobal_body Hglobal_family].
-        pose proof
-          (ordered_par_trace_forall2_of_global
-             body env IHbody Hglobal_body _ _ Hfor) as Hordered_for.
-        eapply OPTLoopPar; eauto.
-    + inversion Htrace; constructor.
-    + inversion Htrace; subst.
-      simpl in Hglobal.
-      constructor. eapply ordered_par_traces_of_global; eauto.
-    + inversion Htrace as
-          [| |env&#x27; tst st tr&#x27; Heval Hbody |env&#x27; tst st Heval | | |];
-        subst; simpl in Hglobal.
-      * eapply OPTGuardTrue; eauto.
-      * eapply OPTGuardFalse; eauto.
-  - intros ss.
-    induction ss as [|s ss IHss]; intros env tr Hglobal Htrace.
-    + inversion Htrace. constructor.
-    + inversion Htrace as [|env&#x27; st sts tr1 tr2 Hst Hsts]; subst.
-      simpl in Hglobal.
-      destruct Hglobal as [Hglobal_s Hglobal_ss].
-      econstructor.
-      * eapply ordered_par_trace_of_global; eauto.
-      * eapply IHss; eauto.
-Qed.
-
-Lemma ordered_loop_semantics_of_global :
-  forall s env mem1 mem2,
-    parallel_families_ordered_stmt s -&gt;
-    loop_semantics s env mem1 mem2 -&gt;
-    ordered_loop_semantics s env mem1 mem2.
-Proof.
-  intros s env mem1 mem2 Hglobal [tr [Htrace Hsem]].
-  exists tr. split; auto.
-  eapply ordered_par_trace_of_global; eauto.
-Qed.
-
-Lemma ordered_semantics_of_global :
-  forall p mem1 mem2,
-    parallel_families_ordered p -&gt;
-    semantics p mem1 mem2 -&gt;
-    ordered_semantics p mem1 mem2.
-Proof.
-  intros [[s ctxt] vars] mem1 mem2 Hglobal Hsem.
-  inversion Hsem as
-    [loop_ext loop ctxt&#x27; vars&#x27; env mem1&#x27; mem2&#x27; Heq Hcompat Hna Hinit Hloop];
-    subst.
-  inversion Heq; subst.
-  econstructor; eauto.
-  eapply ordered_loop_semantics_of_global; eauto.
-Qed.
-
-(** * Affine trace safety and annotation erasure *)
-
-Fixpoint trace_safe_stmt (s : stmt) : Prop :=
-  match s with
-  | Loop _ _ _ _ body =&gt; trace_safe_stmt body
-  | Instr _ es =&gt; exists affs, BaseLoop.exprlist_to_aff es = Okk affs
-  | Seq ss =&gt; trace_safe_stmts ss
-  | Guard _ body =&gt; trace_safe_stmt body
-  end
-with trace_safe_stmts (ss : stmt_list) : Prop :=
-  match ss with
-  | SNil =&gt; True
-  | SCons s ss&#x27; =&gt; trace_safe_stmt s /\ trace_safe_stmts ss&#x27;
-  end.
-
-Definition trace_safe (p : t) : Prop :=
-  let &#x27;(s, _, _) := p in trace_safe_stmt s.
-
-Fixpoint erase_parallelize_dim_stmt_eq_rec
-  (d : nat) (s : stmt) {struct s}
-  : erase_stmt (parallelize_dim_stmt d s) = erase_stmt s
-with erase_parallelize_dim_stmts_eq_rec
-  (d : nat) (ss : stmt_list) {struct ss}
-  : erase_stmt_list (parallelize_dim_stmts d ss) = erase_stmt_list ss.
-Proof.
-  - destruct s; simpl.
-    + destruct l; destruct o as [n|]; simpl; rewrite erase_parallelize_dim_stmt_eq_rec; reflexivity.
-    + reflexivity.
-    + rewrite erase_parallelize_dim_stmts_eq_rec. reflexivity.
-    + rewrite erase_parallelize_dim_stmt_eq_rec. reflexivity.
-  - destruct ss; simpl.
-    + reflexivity.
-    + rewrite erase_parallelize_dim_stmt_eq_rec, erase_parallelize_dim_stmts_eq_rec.
-      reflexivity.
-Qed.
-
-Fixpoint erase_vectorize_dim_stmt_eq_rec
-  (d : nat) (s : stmt) {struct s}
-  : erase_stmt (vectorize_dim_stmt d s) = erase_stmt s
-with erase_vectorize_dim_stmts_eq_rec
-  (d : nat) (ss : stmt_list) {struct ss}
-  : erase_stmt_list (vectorize_dim_stmts d ss) = erase_stmt_list ss.
-Proof.
-  - destruct s; simpl.
-    + destruct l; destruct o as [n|]; simpl; rewrite erase_vectorize_dim_stmt_eq_rec; reflexivity.
-    + reflexivity.
-    + rewrite erase_vectorize_dim_stmts_eq_rec. reflexivity.
-    + rewrite erase_vectorize_dim_stmt_eq_rec. reflexivity.
-  - destruct ss; simpl.
-    + reflexivity.
-    + rewrite erase_vectorize_dim_stmt_eq_rec, erase_vectorize_dim_stmts_eq_rec.
-      reflexivity.
-Qed.
-
-Lemma erase_vectorize_dim_stmt_eq :
-  forall d s,
-    erase_stmt (vectorize_dim_stmt d s) = erase_stmt s
-with erase_vectorize_dim_stmts_eq :
-  forall d ss,
-    erase_stmt_list (vectorize_dim_stmts d ss) = erase_stmt_list ss.
-Proof.
-  - intros d s.
-    apply erase_vectorize_dim_stmt_eq_rec.
-  - intros d ss.
-    apply erase_vectorize_dim_stmts_eq_rec.
-Qed.
-
-Lemma erase_vectorize_dim_eq :
-  forall d p,
-    erase_parallel (vectorize_dim d p) = erase_parallel p.
-Proof.
-  intros d [[s ctxt] vars]; simpl.
-  rewrite erase_vectorize_dim_stmt_eq.
-  reflexivity.
-Qed.
-
-Lemma erase_parallelize_dim_stmt_eq :
-  forall d s,
-    erase_stmt (parallelize_dim_stmt d s) = erase_stmt s
-with erase_parallelize_dim_stmts_eq :
-  forall d ss,
-    erase_stmt_list (parallelize_dim_stmts d ss) = erase_stmt_list ss.
-Proof.
-  - intros d s.
-    apply erase_parallelize_dim_stmt_eq_rec.
-  - intros d ss.
-    apply erase_parallelize_dim_stmts_eq_rec.
-Qed.
-
-Lemma erase_parallelize_dim_eq :
-  forall d p,
-    erase_parallel (parallelize_dim d p) = erase_parallel p.
-Proof.
-  intros d [[s ctxt] vars]; simpl.
-  rewrite erase_parallelize_dim_stmt_eq.
-  reflexivity.
-Qed.
-
-Fixpoint erase_of_loop_stmt_eq_rec
-  (s : BaseLoop.stmt) {struct s}
-  : erase_stmt (of_loop_stmt s) = s
-with erase_of_loop_stmt_list_eq_rec
-  (ss : BaseLoop.stmt_list) {struct ss}
-  : erase_stmt_list (of_loop_stmt_list ss) = ss.
-Proof.
-  - destruct s; simpl.
-    + rewrite erase_of_loop_stmt_eq_rec. reflexivity.
-    + reflexivity.
-    + rewrite erase_of_loop_stmt_list_eq_rec. reflexivity.
-    + rewrite erase_of_loop_stmt_eq_rec. reflexivity.
-  - destruct ss; simpl.
-    + reflexivity.
-    + rewrite erase_of_loop_stmt_eq_rec, erase_of_loop_stmt_list_eq_rec. reflexivity.
-Qed.
-
-Lemma erase_of_loop_stmt_eq :
-  forall s,
-    erase_stmt (of_loop_stmt s) = s
-with erase_of_loop_stmt_list_eq :
-  forall ss,
-    erase_stmt_list (of_loop_stmt_list ss) = ss.
-Proof.
-  - intros s.
-    apply erase_of_loop_stmt_eq_rec.
-  - intros ss.
-    apply erase_of_loop_stmt_list_eq_rec.
-Qed.
-
-Lemma erase_of_loop_eq :
-  forall p,
-    erase_parallel (of_loop p) = p.
-Proof.
-  intros [[s ctxt] vars]; simpl.
-  rewrite erase_of_loop_stmt_eq.
-  reflexivity.
-Qed.
-
-Fixpoint of_loop_stmt_all_origin_none_rec
-  (s : BaseLoop.stmt) {struct s}
-  : all_origin_none_stmt (of_loop_stmt s)
-with of_loop_stmt_list_all_origin_none_rec
-  (ss : BaseLoop.stmt_list) {struct ss}
-  : all_origin_none_stmts (of_loop_stmt_list ss).
-Proof.
-  - destruct s; simpl.
-    + split; auto.
-    + auto.
-    + apply of_loop_stmt_list_all_origin_none_rec.
-    + apply of_loop_stmt_all_origin_none_rec.
-  - destruct ss; simpl.
-    + auto.
-    + split.
-      * apply of_loop_stmt_all_origin_none_rec.
-      * apply of_loop_stmt_list_all_origin_none_rec.
-Qed.
-
-Lemma of_loop_stmt_all_origin_none :
-  forall s,
-    all_origin_none_stmt (of_loop_stmt s)
-with of_loop_stmt_list_all_origin_none :
-  forall ss,
-    all_origin_none_stmts (of_loop_stmt_list ss).
-Proof.
-  - intros s.
-    apply of_loop_stmt_all_origin_none_rec.
-  - intros ss.
-    apply of_loop_stmt_list_all_origin_none_rec.
-Qed.
-
-Lemma of_loop_all_origin_none :
-  forall p,
-    all_origin_none (of_loop p).
-Proof.
-  intros [[s ctxt] vars]; simpl.
-  apply of_loop_stmt_all_origin_none.
-Qed.
-
-Lemma instr_point_sema_stable_under_state_eq :
-  forall ip st1 st2 st1&#x27; st2&#x27;,
-    Instr.State.eq st1 st1&#x27; -&gt;
-    Instr.State.eq st2 st2&#x27; -&gt;
-    ILSema.instr_point_sema ip st1 st2 -&gt;
-    ILSema.instr_point_sema ip st1&#x27; st2&#x27;.
-Proof.
-  exact ILSema.instr_point_sema_stable_under_state_eq.
-Qed.
-
-Lemma instr_point_sema_preserve_nonalias :
-  forall ip st1 st2,
-    Instr.NonAlias st1 -&gt;
-    ILSema.instr_point_sema ip st1 st2 -&gt;
-    Instr.NonAlias st2.
-Proof.
-  intros ip st1 st2 Hna Hsem.
-  inversion Hsem as [wcs rcs Hinstr]; subst.
-  eapply Instr.sema_prsv_nonalias; eauto.
-Qed.
-
-Lemma instr_point_list_semantics_nil_inv :
-  forall st1 st2,
-    ILSema.instr_point_list_semantics [] st1 st2 -&gt;
-    Instr.State.eq st1 st2.
-Proof.
-  exact ILSema.instr_point_list_semantics_nil_inv.
-Qed.
-
-Lemma instr_point_list_semantics_singleton_inv :
-  forall ip st1 st2,
-    ILSema.instr_point_list_semantics [ip] st1 st2 -&gt;
-    ILSema.instr_point_sema ip st1 st2.
-Proof.
-  exact ILSema.instr_point_list_semantics_singleton_inv.
-Qed.
-
-Lemma instr_point_list_semantics_app_inv :
-  forall l1 l2 st1 st3,
-    ILSema.instr_point_list_semantics (l1 ++ l2) st1 st3 -&gt;
-    exists st2,
-      ILSema.instr_point_list_semantics l1 st1 st2 /\
-      ILSema.instr_point_list_semantics l2 st2 st3.
-Proof.
-  exact ILSema.instr_point_list_semantics_app_inv.
-Qed.
-
-Lemma base_loop_semantics_aux_implies_loop_semantics :
-  forall s env mem1 mem2,
-    BaseLoop.loop_semantics_aux s env mem1 mem2 -&gt;
-    BaseLoop.loop_semantics s env mem1 mem2.
-Proof.
-  refine
-    (BaseLoop.loop_semantics_aux_mutual_ind
-       (fun s env mem1 mem2 _ =&gt; BaseLoop.loop_semantics s env mem1 mem2)
-       (fun zs s env mem1 mem2 _ =&gt;
-          Instr.IterSem.iter_semantics
-            (fun x =&gt; BaseLoop.loop_semantics s (x :: env))
-            zs mem1 mem2)
-       _ _ _ _ _ _ _ _).
-  - intros i es env mem1 mem2 wcs rcs Hinstr.
-    eapply BaseLoop.LInstr; eauto.
-  - intros env mem.
-    apply BaseLoop.LSeqEmpty.
-  - intros env st sts mem1 mem2 mem3 l Hst l0 Hsts.
-    eapply BaseLoop.LSeq; eauto.
-  - intros env t st mem1 mem2 Heval l Hst.
-    eapply BaseLoop.LGuardTrue; eauto.
-  - intros env t st mem Heval.
-    eapply BaseLoop.LGuardFalse; eauto.
-  - intros env lb ub st mem1 mem2 l Hiter.
-    eapply BaseLoop.LLoop; eauto.
-  - intros st env mem.
-    apply Instr.IterSem.IDone.
-  - intros x xs st env mem1 mem2 mem3 l Hhead l0 Htail.
-    econstructor; eauto.
-Qed.
-
-Lemma base_loop_semantics_aux_list_implies_iter :
-  forall zs s env mem1 mem2,
-    BaseLoop.loop_semantics_aux_list zs s env mem1 mem2 -&gt;
-    Instr.IterSem.iter_semantics
-      (fun x =&gt; BaseLoop.loop_semantics s (x :: env))
-      zs mem1 mem2.
-Proof.
-  refine
-    (BaseLoop.loop_semantics_aux_list_mutual_ind
-       (fun s env mem1 mem2 _ =&gt; BaseLoop.loop_semantics s env mem1 mem2)
-       (fun zs s env mem1 mem2 _ =&gt;
-          Instr.IterSem.iter_semantics
-            (fun x =&gt; BaseLoop.loop_semantics s (x :: env))
-            zs mem1 mem2)
-       _ _ _ _ _ _ _ _).
-  - intros i es env mem1 mem2 wcs rcs Hinstr.
-    eapply BaseLoop.LInstr; eauto.
-  - intros env mem.
-    apply BaseLoop.LSeqEmpty.
-  - intros env st sts mem1 mem2 mem3 l Hst l0 Hsts.
-    eapply BaseLoop.LSeq; eauto.
-  - intros env t st mem1 mem2 Heval l Hst.
-    eapply BaseLoop.LGuardTrue; eauto.
-  - intros env t st mem Heval.
-    eapply BaseLoop.LGuardFalse; eauto.
-  - intros env lb ub st mem1 mem2 l Hiter.
-    eapply BaseLoop.LLoop; eauto.
-  - intros st env mem.
-    apply Instr.IterSem.IDone.
-  - intros x xs st env mem1 mem2 mem3 l Hhead l0 Htail.
-    econstructor; eauto.
-Qed.
-
-Lemma base_loop_instance_list_implies_loop_semantics :
-  forall s env il mem1 mem2,
-    BaseLoop.loop_instance_list_semantics s env il mem1 mem2 -&gt;
-    BaseLoop.loop_semantics s env mem1 mem2.
-Proof.
-  intros s env il mem1 mem2 Hinst.
-  eapply base_loop_semantics_aux_implies_loop_semantics.
-  eapply BaseLoop.instance_list_implies_loop_semantics_aux; eauto.
-Qed.
-
-Lemma seq_trace_forall2_refines_erased :
-  forall body env,
-    (forall env&#x27; tr mem1 mem2,
-       trace_safe_stmt body -&gt;
-       seq_trace body env&#x27; tr -&gt;
-       ILSema.instr_point_list_semantics tr mem1 mem2 -&gt;
-       exists mem2&#x27;,
-         BaseLoop.loop_semantics (erase_stmt body) env&#x27; mem1 mem2&#x27; /\
-         Instr.State.eq mem2 mem2&#x27;) -&gt;
-    forall zs trs mem1 mem2,
-      trace_safe_stmt body -&gt;
-      Forall2 (fun z tri =&gt; seq_trace body (z :: env) tri) zs trs -&gt;
-      ILSema.instr_point_list_semantics (concat trs) mem1 mem2 -&gt;
-      exists mem2&#x27;,
-        Instr.IterSem.iter_semantics
-          (fun z =&gt; BaseLoop.loop_semantics (erase_stmt body) (z :: env))
-          zs mem1 mem2&#x27; /\
-        Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  intros body env Hbody zs trs mem1 mem2 Hsafe_body Hfor.
-  revert mem1 mem2 Hsafe_body.
-  induction Hfor as [|z tr zs&#x27; trs&#x27; Htri Hfor&#x27; IHfor&#x27;];
-    intros mem1 mem2 Hsafe_body Hsem_concat.
-  - simpl in Hsem_concat.
-    exists mem1.
-    split.
-    + constructor.
-    + eapply Instr.State.eq_sym.
-      eapply instr_point_list_semantics_nil_inv; eauto.
-  - simpl in Hsem_concat.
-    eapply instr_point_list_semantics_app_inv in Hsem_concat.
-    destruct Hsem_concat as [mem_mid [Hsem_head Hsem_tail]].
-    pose proof
-      (Hbody (z :: env) tr mem1 mem_mid Hsafe_body Htri Hsem_head)
-      as [mem_mid&#x27; [Hbody_sem Heq_mid]].
-    pose proof
-      (ILSema.instr_point_list_sema_stable_under_state_eq
-         (concat trs&#x27;) mem_mid mem2 mem_mid&#x27; mem2
-         Hsem_tail Heq_mid (Instr.State.eq_refl mem2))
-      as Hsem_tail&#x27;.
-    pose proof (IHfor&#x27; mem_mid&#x27; mem2 Hsafe_body Hsem_tail&#x27;)
-      as [mem2&#x27; [Hrest_sem Heq_tail]].
-    exists mem2&#x27;.
-    split.
-    + eapply Instr.IterSem.IProgress.
-      * exact Hbody_sem.
-      * exact Hrest_sem.
-    + exact Heq_tail.
-Qed.
-
-Lemma seq_trace_refines_erased_stmt :
-  forall s env tr mem1 mem2,
-    trace_safe_stmt s -&gt;
-    seq_trace s env tr -&gt;
-    ILSema.instr_point_list_semantics tr mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.loop_semantics (erase_stmt s) env mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;
-with seq_trace_refines_erased_stmts :
-  forall ss env tr mem1 mem2,
-    trace_safe_stmts ss -&gt;
-    seq_traces ss env tr -&gt;
-    ILSema.instr_point_list_semantics tr mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.loop_semantics (BaseLoop.Seq (erase_stmt_list ss)) env mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  - intros s.
-    induction s as [mode od lb ub body IHbody|i es|ss|t body IHbody];
-      intros env tr mem1 mem2 Hsafe Htrace Hsem.
-    + inversion Htrace as
-          [| | | | mode&#x27; od&#x27; lb&#x27; ub&#x27; body&#x27; env&#x27; zs trs tr&#x27; Hzs Hfor Hconcat];
-        subst.
-      pose proof
-        (seq_trace_forall2_refines_erased
-           body env IHbody _ _ mem1 mem2 Hsafe Hfor Hsem)
-        as [mem2&#x27; [Hloop_sem Heq]].
-      exists mem2&#x27;. split.
-      * econstructor. exact Hloop_sem.
-      * exact Heq.
-    + inversion Htrace; subst.
-      simpl in Hsafe.
-      pose proof (instr_point_list_semantics_singleton_inv _ _ _ Hsem) as Hip.
-      inversion Hip as [wcs rcs Hinstr]; subst.
-      unfold BaseLoop.mk_instr_point in Hinstr.
-      destruct Hsafe as [affs Haff].
-      rewrite Haff in Hinstr.
-      simpl in Hinstr.
-      pose proof (BaseLoop.exprlist_to_aff_correct es env affs Haff) as Haff_ok.
-      exists mem2.
-      split.
-      * eapply BaseLoop.LInstr with (wcs := wcs) (rcs := rcs).
-        rewrite &lt;- Haff_ok in Hinstr.
-        exact Hinstr.
-      * apply Instr.State.eq_refl.
-    + inversion Htrace; subst.
-      eapply seq_trace_refines_erased_stmts; eauto.
-    + inversion Htrace as
-          [| | env&#x27; tst st tr&#x27; Heval Hbodytrace | env&#x27; tst st Heval |];
-        subst; simpl in Hsafe.
-      * pose proof (IHbody env tr mem1 mem2 Hsafe Hbodytrace Hsem)
-          as [mem2&#x27; [Hbody_sem Heq]].
-        exists mem2&#x27;.
-        split; [eapply BaseLoop.LGuardTrue; eauto | exact Heq].
-      * exists mem1.
-        split;
-          [eapply BaseLoop.LGuardFalse; eauto
-          | eapply Instr.State.eq_sym;
-            eapply instr_point_list_semantics_nil_inv; eauto].
-  - intros ss.
-    induction ss as [|s ss IHss&#x27;]; intros env tr mem1 mem2 Hsafe Htrace Hsem.
-    + inversion Htrace; subst.
-      exists mem1.
-      split;
-        [constructor
-        | eapply Instr.State.eq_sym;
-          eapply instr_point_list_semantics_nil_inv; eauto].
-    + inversion Htrace as [|env&#x27; st sts tr1 tr2 Hst Hsts]; subst.
-      simpl in Hsafe.
-      destruct Hsafe as [Hsafe_s Hsafe_ss].
-      eapply instr_point_list_semantics_app_inv in Hsem.
-      destruct Hsem as [mem_mid [Hsem_head Hsem_tail]].
-      pose proof
-        (seq_trace_refines_erased_stmt
-           s env tr1 mem1 mem_mid Hsafe_s Hst Hsem_head)
-        as [mem_mid&#x27; [Hs_sem Heq_mid]].
-      pose proof
-        (ILSema.instr_point_list_sema_stable_under_state_eq
-           tr2 mem_mid mem2 mem_mid&#x27; mem2
-           Hsem_tail Heq_mid (Instr.State.eq_refl mem2))
-        as Hsem_tail&#x27;.
-      pose proof
-        (IHss&#x27; env tr2 mem_mid&#x27; mem2 Hsafe_ss Hsts Hsem_tail&#x27;)
-        as [mem2&#x27; [Hss_sem Heq_tail]].
-      exists mem2&#x27;.
-      split.
-      * econstructor; eauto.
-      * eapply Instr.State.eq_trans.
-        -- exact Heq_tail.
-        -- apply Instr.State.eq_refl.
-Qed.
-
-Lemma seq_trace_refines_erased :
-  forall s env tr mem1 mem2,
-    trace_safe_stmt s -&gt;
-    seq_trace s env tr -&gt;
-    ILSema.instr_point_list_semantics tr mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.loop_semantics (erase_stmt s) env mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  intros. eapply seq_trace_refines_erased_stmt; eauto.
-Qed.
-
-Lemma instr_point_list_semantics_swap_adj :
-  forall ip1 ip2 rest st1 st4,
-    Instr.NonAlias st1 -&gt;
-    ILSema.Permutable ip1 ip2 -&gt;
-    ILSema.instr_point_list_semantics (ip1 :: ip2 :: rest) st1 st4 -&gt;
-    exists st4&#x27;,
-      ILSema.instr_point_list_semantics (ip2 :: ip1 :: rest) st1 st4&#x27; /\
-      Instr.State.eq st4 st4&#x27;.
-Proof.
-  intros ip1 ip2 rest st1 st4 Hna Hperm Hsem.
-  inversion Hsem as [|st1&#x27; st2 st4&#x27; ip1&#x27; l1 Hip1 Htail]; subst.
-  inversion Htail as [|st2&#x27; st3 st4&#x27;&#x27; ip2&#x27; l2 Hip2 Hrest]; subst.
-  unfold ILSema.Permutable in Hperm.
-  specialize (Hperm st1 Hna).
-  destruct Hperm as [Hfwd _].
-  destruct (Hfwd _ _ Hip1 Hip2) as (st2&#x27;&#x27; &amp; st3&#x27; &amp; Hip2&#x27; &amp; Hip1&#x27; &amp; Heq3).
-  pose proof
-    (ILSema.instr_point_list_sema_stable_under_state_eq
-       rest st3 st4 st3&#x27; st4
-       Hrest Heq3 (Instr.State.eq_refl st4))
-    as Hrest&#x27;.
-  exists st4.
-  split.
-  - econstructor.
-    + exact Hip2&#x27;.
-    + econstructor.
-      * exact Hip1&#x27;.
-      * exact Hrest&#x27;.
-  - apply Instr.State.eq_refl.
-Qed.
-
-Lemma move_front_permutable :
-  forall prefix x rest st1 st2,
-    Instr.NonAlias st1 -&gt;
-    (forall y, In y prefix -&gt; ILSema.Permutable y x) -&gt;
-    ILSema.instr_point_list_semantics (prefix ++ x :: rest) st1 st2 -&gt;
-    exists st2&#x27;,
-      ILSema.instr_point_list_semantics (x :: prefix ++ rest) st1 st2&#x27; /\
-      Instr.State.eq st2 st2&#x27;.
-Proof.
-  induction prefix as [|y prefix IH]; intros x rest st1 st2 Hna Hperm Hsem.
-  - simpl in *.
-    exists st2.
-    split; [exact Hsem | apply Instr.State.eq_refl].
-  - simpl in Hsem.
-    inversion Hsem as [|st1&#x27; stmid st2&#x27; ip&#x27; il Hip Htail]; subst.
-    assert (Hna_mid : Instr.NonAlias stmid).
-    {
-      eapply instr_point_sema_preserve_nonalias; eauto.
-    }
-    assert (Hperm_tail : forall y0, In y0 prefix -&gt; ILSema.Permutable y0 x).
-    {
-      intros y0 Hin.
-      apply Hperm.
-      right; exact Hin.
-    }
-    pose proof (IH x rest stmid st2 Hna_mid Hperm_tail Htail)
-      as (st2&#x27; &amp; Htail_moved &amp; Heq_tail).
-    assert
-      (Hyx :
-         ILSema.instr_point_list_semantics (y :: x :: prefix ++ rest) st1 st2&#x27;).
-    {
-      econstructor.
-      - exact Hip.
-      - exact Htail_moved.
-    }
-    pose proof
-      (instr_point_list_semantics_swap_adj
-         y x (prefix ++ rest) st1 st2&#x27;
-         Hna (Hperm y (or_introl eq_refl)) Hyx)
-      as (st2&#x27;&#x27; &amp; Hswapped &amp; Heq_swap).
-    exists st2&#x27;&#x27;.
-    split.
-    + exact Hswapped.
-    + eapply Instr.State.eq_trans; eauto.
-Qed.
-
-Lemma move_back_permutable :
-  forall x prefix rest st1 st2,
-    Instr.NonAlias st1 -&gt;
-    (forall y, In y prefix -&gt; ILSema.Permutable y x) -&gt;
-    ILSema.instr_point_list_semantics (x :: prefix ++ rest) st1 st2 -&gt;
-    exists st2&#x27;,
-      ILSema.instr_point_list_semantics (prefix ++ x :: rest) st1 st2&#x27; /\
-      Instr.State.eq st2 st2&#x27;.
-Proof.
-  induction prefix as [|y prefix IH]; intros rest st1 st2 Hna Hperm Hsem.
-  - simpl in *.
-    exists st2.
-    split; [exact Hsem | apply Instr.State.eq_refl].
-  - simpl in Hsem.
-    assert (Hyx : ILSema.Permutable x y).
-    {
-      eapply ILSema.Permutable_symm.
-      apply Hperm.
-      left; reflexivity.
-    }
-    pose proof
-      (instr_point_list_semantics_swap_adj
-         x y (prefix ++ rest) st1 st2 Hna Hyx Hsem)
-      as [st2&#x27; [Hswapped Heq_swap]].
-    inversion Hswapped as [|st1&#x27; stmid st2&#x27;&#x27; ip&#x27; il Hy Htail]; subst.
-    assert (Hna_mid : Instr.NonAlias stmid).
-    {
-      eapply instr_point_sema_preserve_nonalias; eauto.
-    }
-    assert (Hperm_tail : forall y0, In y0 prefix -&gt; ILSema.Permutable y0 x).
-    {
-      intros y0 Hin.
-      apply Hperm.
-      right; exact Hin.
-    }
-    destruct (IH rest stmid st2&#x27; Hna_mid Hperm_tail Htail)
-      as [st2&#x27;&#x27; [Hmoved Heq_tail]].
-    exists st2&#x27;&#x27;.
-    split.
-    + econstructor; eauto.
-    + eapply Instr.State.eq_trans; eauto.
-Qed.
-
-Lemma instr_point_list_semantics_cons_inv :
-  forall ip rest st1 st2,
-    ILSema.instr_point_list_semantics (ip :: rest) st1 st2 -&gt;
-    exists stmid,
-      ILSema.instr_point_sema ip st1 stmid /\
-      ILSema.instr_point_list_semantics rest stmid st2.
-Proof.
-  exact ILSema.instr_point_list_semantics_cons_inv.
-Qed.
-
-Lemma iter_semantics_preserve_nonalias :
-  forall A (P : A -&gt; mem -&gt; mem -&gt; Prop),
-    (forall x mem1 mem2,
-        P x mem1 mem2 -&gt;
-        Instr.NonAlias mem1 -&gt;
-        Instr.NonAlias mem2) -&gt;
-    forall xs mem1 mem2,
-      Instr.IterSem.iter_semantics P xs mem1 mem2 -&gt;
-      Instr.NonAlias mem1 -&gt;
-      Instr.NonAlias mem2.
-Proof.
-  intros A P Hstep xs mem1 mem2 Hiter.
-  induction Hiter; intros Hna.
-  - exact Hna.
-  - apply IHHiter.
-    eapply Hstep; eauto.
-Qed.
-
-Scheme base_stmt_mutind := Induction for BaseLoop.stmt Sort Prop
-with base_stmts_mutind := Induction for BaseLoop.stmt_list Sort Prop.
-Combined Scheme base_stmt_stmts_mutind from base_stmt_mutind, base_stmts_mutind.
-
-Definition base_stmt_preserve_nonalias_goal (s : BaseLoop.stmt) : Prop :=
-  forall env mem1 mem2,
-    BaseLoop.loop_semantics s env mem1 mem2 -&gt;
-    Instr.NonAlias mem1 -&gt;
-    Instr.NonAlias mem2.
-
-Definition base_stmts_preserve_nonalias_goal (ss : BaseLoop.stmt_list) : Prop :=
-  forall env mem1 mem2,
-    BaseLoop.loop_semantics (BaseLoop.Seq ss) env mem1 mem2 -&gt;
-    Instr.NonAlias mem1 -&gt;
-    Instr.NonAlias mem2.
-
-Lemma base_loop_semantics_preserve_nonalias_mutual :
-  (forall s,
-      base_stmt_preserve_nonalias_goal s) /\
-  (forall ss,
-      base_stmts_preserve_nonalias_goal ss).
-Proof.
-  apply
-    (base_stmt_stmts_mutind
-       base_stmt_preserve_nonalias_goal
-       base_stmts_preserve_nonalias_goal).
-  - intros lb ub body IHbody env mem1 mem2 Hsem Hna.
-    inversion Hsem as
-        [| | | | |
-         env&#x27; lb&#x27; ub&#x27; body&#x27; mem1&#x27; mem2&#x27; Hiterations]; subst.
-    eapply
-      (iter_semantics_preserve_nonalias
-         Z
-         (fun x mem1 mem2 =&gt; BaseLoop.loop_semantics body (x :: env) mem1 mem2));
-      [intros x mem1&#x27; mem2&#x27; Hbody_sem Hna&#x27;; eapply IHbody; eauto
-      | exact Hiterations
-      | exact Hna].
-  - intros i es env mem1 mem2 Hsem Hna.
-    inversion Hsem; subst.
-    eauto using Instr.sema_prsv_nonalias.
-  - intros ss IHss env mem1 mem2 Hsem Hna.
-    eapply IHss; eauto.
-  - intros test body IHbody env mem1 mem2 Hsem Hna.
-    inversion Hsem; subst; eauto.
-  - intros env mem1 mem2 Hsem Hna.
-    inversion Hsem; subst; eauto.
-  - intros s IHs ss IHss env mem1 mem2 Hsem Hna.
-    inversion Hsem; subst.
-    eapply IHss.
-    + eauto.
-    + eapply IHs; eauto.
-Qed.
-
-Lemma base_loop_semantics_preserve_nonalias_stmt :
-  forall s,
-    base_stmt_preserve_nonalias_goal s.
-Proof.
-  exact (proj1 base_loop_semantics_preserve_nonalias_mutual).
-Qed.
-
-Lemma base_loop_semantics_preserve_nonalias_stmts :
-  forall ss,
-    base_stmts_preserve_nonalias_goal ss.
-Proof.
-  exact (proj2 base_loop_semantics_preserve_nonalias_mutual).
-Qed.
-
-Lemma base_loop_semantics_preserve_nonalias :
-  forall s env mem1 mem2,
-    BaseLoop.loop_semantics s env mem1 mem2 -&gt;
-    Instr.NonAlias mem1 -&gt;
-    Instr.NonAlias mem2.
-Proof.
-  intros s.
-  apply base_loop_semantics_preserve_nonalias_stmt.
-Qed.
-
-Lemma interleave_safe_refines_concat :
-  forall trs out st1 st2,
-    Instr.NonAlias st1 -&gt;
-    interleave_safe trs out -&gt;
-    ILSema.instr_point_list_semantics out st1 st2 -&gt;
-    exists st2&#x27;,
-      ILSema.instr_point_list_semantics (concat trs) st1 st2&#x27; /\
-      Instr.State.eq st2 st2&#x27;.
-Proof.
-  intros trs out st1 st2 Hna Hsafe.
-  revert st1 st2 Hna.
-  induction Hsafe as
-      [|trs out Hsafe IHsafe
-       |pre x xs post out Hbefore Hsafe IHsafe];
-    intros st1 st2 Hna Hsem.
-  - simpl in Hsem.
-    exists st1.
-    split.
-    + constructor. apply Instr.State.eq_refl.
-    + eapply Instr.State.eq_sym.
-      eapply instr_point_list_semantics_nil_inv; eauto.
-  - simpl in Hsem.
-    eapply IHsafe; eauto.
-  - destruct (instr_point_list_semantics_cons_inv _ _ _ _ Hsem)
-      as [stmid [Hx Htail]].
-    assert (Hna_mid : Instr.NonAlias stmid).
-    {
-      eapply instr_point_sema_preserve_nonalias; eauto.
-    }
-    (* Sequentialize the remaining interleaving after executing [x]. *)
-    destruct (IHsafe stmid st2 Hna_mid Htail)
-      as [st2&#x27; [Hconcat_tail Heq_tail]].
-    assert
-      (Hconcat_reduced :
-         concat (pre ++ xs :: post) =
-         concat pre ++ concat (xs :: post)).
-    {
-      rewrite concat_app.
-      reflexivity.
-    }
-    assert
-      (Hselected_first :
-         ILSema.instr_point_list_semantics
-           (x :: concat pre ++ concat (xs :: post)) st1 st2&#x27;).
-    {
-      econstructor.
-      - exact Hx.
-      - rewrite &lt;- Hconcat_reduced.
-        exact Hconcat_tail.
-    }
-    assert
-      (Hconcat_original :
-         concat (pre ++ (x :: xs) :: post) =
-         concat pre ++ x :: concat (xs :: post)).
-    {
-      rewrite concat_app.
-      simpl.
-      reflexivity.
-    }
-    (* Move [x] behind the earlier families to recover concatenation order. *)
-    destruct
-      (move_back_permutable
-         x (concat pre) (concat (xs :: post)) st1 st2&#x27;
-         Hna Hbefore Hselected_first)
-      as [st2&#x27;&#x27; [Hconcat_full Heq_move]].
-    assert
-      (Horiginal_sem :
-         ILSema.instr_point_list_semantics
-           (concat (pre ++ (x :: xs) :: post)) st1 st2&#x27;&#x27;).
-    {
-      rewrite Hconcat_original.
-      exact Hconcat_full.
-    }
-    exists st2&#x27;&#x27;.
-    split.
-    + exact Horiginal_sem.
-    + eapply Instr.State.eq_trans.
-      * exact Heq_tail.
-      * exact Heq_move.
-Qed.
-
-(** * Serializing a certified concrete trace
-
-    The proof recursively serializes ordered child traces, turns a permitted
-    interleaving back into family concatenation, and erases loop modes.  The
-    public endpoint is [semantics_refines_erased]. *)
-
-Lemma ordered_par_trace_forall2_refines_erased :
-  forall body env,
-    (forall env&#x27; tr mem1 mem2,
-        Instr.NonAlias mem1 -&gt;
-        trace_safe_stmt body -&gt;
-        ordered_par_trace body env&#x27; tr -&gt;
-        ILSema.instr_point_list_semantics tr mem1 mem2 -&gt;
-        exists mem2&#x27;,
-          BaseLoop.loop_semantics (erase_stmt body) env&#x27; mem1 mem2&#x27; /\
-          Instr.State.eq mem2 mem2&#x27;) -&gt;
-    forall zs trs mem1 mem2,
-      Instr.NonAlias mem1 -&gt;
-      trace_safe_stmt body -&gt;
-      Forall2 (fun z tri =&gt; ordered_par_trace body (z :: env) tri) zs trs -&gt;
-      ILSema.instr_point_list_semantics (concat trs) mem1 mem2 -&gt;
-      exists mem2&#x27;,
-        Instr.IterSem.iter_semantics
-          (fun z =&gt; BaseLoop.loop_semantics (erase_stmt body) (z :: env))
-          zs mem1 mem2&#x27; /\
-        Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  intros body env Hbody zs trs mem1 mem2 Hna Hsafe_body Hfor.
-  revert mem1 mem2 Hna Hsafe_body.
-  induction Hfor as [|z tr zs&#x27; trs&#x27; Htri Hfor&#x27; IHfor&#x27;];
-    intros mem1 mem2 Hna Hsafe_body Hsem_concat.
-  - simpl in Hsem_concat.
-    exists mem1.
-    split.
-    + constructor.
-    + eapply Instr.State.eq_sym.
-      eapply instr_point_list_semantics_nil_inv; eauto.
-  - simpl in Hsem_concat.
-    eapply instr_point_list_semantics_app_inv in Hsem_concat.
-    destruct Hsem_concat as [mem_mid [Hsem_head Hsem_tail]].
-    pose proof
-      (Hbody
-         (z :: env) tr mem1 mem_mid Hna Hsafe_body Htri Hsem_head)
-      as [mem_mid&#x27; [Hbody_sem Heq_mid]].
-    assert (Hna_mid&#x27; : Instr.NonAlias mem_mid&#x27;).
-    {
-      eapply base_loop_semantics_preserve_nonalias; eauto.
-    }
-    pose proof
-      (ILSema.instr_point_list_sema_stable_under_state_eq
-         (concat trs&#x27;) mem_mid mem2 mem_mid&#x27; mem2
-         Hsem_tail Heq_mid (Instr.State.eq_refl mem2))
-      as Hsem_tail&#x27;.
-    pose proof
-      (IHfor&#x27; mem_mid&#x27; mem2 Hna_mid&#x27; Hsafe_body Hsem_tail&#x27;)
-      as [mem2&#x27; [Hrest_sem Heq_tail]].
-    exists mem2&#x27;.
-    split.
-    + eapply Instr.IterSem.IProgress.
-      * exact Hbody_sem.
-      * exact Hrest_sem.
-    + exact Heq_tail.
-Qed.
-
-Lemma ordered_par_trace_refines_erased_stmt :
-  forall s env tr mem1 mem2,
-    Instr.NonAlias mem1 -&gt;
-    trace_safe_stmt s -&gt;
-    ordered_par_trace s env tr -&gt;
-    ILSema.instr_point_list_semantics tr mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.loop_semantics (erase_stmt s) env mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;
-with ordered_par_traces_refines_erased_stmts :
-  forall ss env tr mem1 mem2,
-    Instr.NonAlias mem1 -&gt;
-    trace_safe_stmts ss -&gt;
-    ordered_par_traces ss env tr -&gt;
-    ILSema.instr_point_list_semantics tr mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.loop_semantics (BaseLoop.Seq (erase_stmt_list ss)) env mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  - intros s.
-    induction s as [mode od lb ub body IHbody|i es|ss|t body IHbody];
-      intros env tr mem1 mem2 Hna Hsafe Htrace Hsem.
-    + inversion Htrace as
-          [| | | |od&#x27; lb&#x27; ub&#x27; body&#x27; env&#x27; zs trs tr&#x27; Hzs Hfor Hordered_for Hconcat
-           |od&#x27; lb&#x27; ub&#x27; body&#x27; env&#x27; zs trs tr&#x27; Hzs Hfor Hordered_for Hconcat
-           |d lb&#x27; ub&#x27; body&#x27; env&#x27; zs trs tr&#x27; Hzs Hfor Hordered_for Hfamily Hinter];
-        subst.
-      * simpl in Hsafe.
-        pose proof
-          (ordered_par_trace_forall2_refines_erased
-             body env IHbody _ _ mem1 mem2
-             Hna Hsafe Hordered_for Hsem)
-          as [mem2&#x27; [Hloop_sem Heq]].
-        exists mem2&#x27;. split.
-        -- econstructor. exact Hloop_sem.
-        -- exact Heq.
-      * simpl in Hsafe.
-        pose proof
-          (ordered_par_trace_forall2_refines_erased
-             body env IHbody _ _ mem1 mem2
-             Hna Hsafe Hordered_for Hsem)
-          as [mem2&#x27; [Hloop_sem Heq]].
-        exists mem2&#x27;. split.
-        -- econstructor. exact Hloop_sem.
-        -- exact Heq.
-      * simpl in Hsafe.
-        pose proof
-          (family_ordered_interleave_safe
-             _ _ Hfamily Hinter) as Hinter_safe.
-        pose proof
-          (interleave_safe_refines_concat
-             _ _ mem1 mem2 Hna Hinter_safe Hsem)
-          as [mem2a [Hconcat_sem Heq_concat]].
-        pose proof
-          (ordered_par_trace_forall2_refines_erased
-             body env IHbody _ _ mem1 mem2a
-             Hna Hsafe Hordered_for Hconcat_sem)
-          as [mem2&#x27; [Hloop_sem Heq_seq]].
-        exists mem2&#x27;. split.
-        -- econstructor. exact Hloop_sem.
-        -- eapply Instr.State.eq_trans; eauto.
-    + inversion Htrace; subst.
-      simpl in Hsafe.
-      pose proof (instr_point_list_semantics_singleton_inv _ _ _ Hsem) as Hip.
-      inversion Hip as [wcs rcs Hinstr]; subst.
-      unfold BaseLoop.mk_instr_point in Hinstr.
-      destruct Hsafe as [affs Haff].
-      rewrite Haff in Hinstr.
-      simpl in Hinstr.
-      pose proof (BaseLoop.exprlist_to_aff_correct es env affs Haff) as Haff_ok.
-      exists mem2.
-      split.
-      * eapply BaseLoop.LInstr with (wcs := wcs) (rcs := rcs).
-        rewrite &lt;- Haff_ok in Hinstr.
-        exact Hinstr.
-      * apply Instr.State.eq_refl.
-    + inversion Htrace; subst.
-      eapply ordered_par_traces_refines_erased_stmts; eauto.
-    + inversion Htrace as
-          [| | env&#x27; tst st tr&#x27; Heval Hbodytrace | env&#x27; tst st Heval | | |];
-        subst; simpl in Hsafe.
-      * pose proof
-          (IHbody env tr mem1 mem2 Hna Hsafe Hbodytrace Hsem)
-          as [mem2&#x27; [Hbody_sem Heq]].
-        exists mem2&#x27;.
-        split; [eapply BaseLoop.LGuardTrue; eauto | exact Heq].
-      * exists mem1.
-        split;
-          [eapply BaseLoop.LGuardFalse; eauto
-          | eapply Instr.State.eq_sym;
-            eapply instr_point_list_semantics_nil_inv; eauto].
-  - intros ss.
-    induction ss as [|s ss IHss&#x27;];
-      intros env tr mem1 mem2 Hna Hsafe Htrace Hsem.
-    + inversion Htrace; subst.
-      exists mem1.
-      split;
-        [constructor
-        | eapply Instr.State.eq_sym;
-          eapply instr_point_list_semantics_nil_inv; eauto].
-    + inversion Htrace as [|env&#x27; st sts tr1 tr2 Hst Hsts]; subst.
-      simpl in Hsafe.
-      destruct Hsafe as [Hsafe_s Hsafe_ss].
-      eapply instr_point_list_semantics_app_inv in Hsem.
-      destruct Hsem as [mem_mid [Hsem_head Hsem_tail]].
-      pose proof
-        (ordered_par_trace_refines_erased_stmt
-           s env tr1 mem1 mem_mid Hna Hsafe_s Hst Hsem_head)
-        as [mem_mid&#x27; [Hs_sem Heq_mid]].
-      assert (Hna_mid&#x27; : Instr.NonAlias mem_mid&#x27;).
-      {
-        eapply base_loop_semantics_preserve_nonalias; eauto.
-      }
-      pose proof
-        (ILSema.instr_point_list_sema_stable_under_state_eq
-           tr2 mem_mid mem2 mem_mid&#x27; mem2
-           Hsem_tail Heq_mid (Instr.State.eq_refl mem2))
-        as Hsem_tail&#x27;.
-      pose proof
-        (IHss&#x27;
-           env tr2 mem_mid&#x27; mem2 Hna_mid&#x27; Hsafe_ss Hsts Hsem_tail&#x27;)
-        as [mem2&#x27; [Hss_sem Heq_tail]].
-      exists mem2&#x27;.
-      split.
-      * econstructor; eauto.
-      * exact Heq_tail.
-Qed.
-
-Lemma ordered_par_trace_refines_erased :
-  forall s env tr mem1 mem2,
-    Instr.NonAlias mem1 -&gt;
-    trace_safe_stmt s -&gt;
-    ordered_par_trace s env tr -&gt;
-    ILSema.instr_point_list_semantics tr mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.loop_semantics (erase_stmt s) env mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  intros. eapply ordered_par_trace_refines_erased_stmt; eauto.
-Qed.
-
-Lemma ordered_loop_semantics_refines_erased :
-  forall s env mem1 mem2,
-    Instr.NonAlias mem1 -&gt;
-    trace_safe_stmt s -&gt;
-    ordered_loop_semantics s env mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.loop_semantics (erase_stmt s) env mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  intros s env mem1 mem2 Hna Hsafe [tr [Htrace Hsem]].
-  eapply ordered_par_trace_refines_erased; eauto.
-Qed.
-
-Lemma semantics_refines_erased :
-  forall p mem1 mem2,
-    trace_safe p -&gt;
-    ordered_semantics p mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.semantics (erase_parallel p) mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  intros [[s ctxt] vars] mem1 mem2 Hsafe Hsem.
-  inversion Hsem as [loop_ext loop ctxt&#x27; vars&#x27; env mem1&#x27; mem2&#x27; Heq Hcompat Hna Hinit Hloop];
-    subst.
-  inversion Heq; subst.
-  simpl in Hsafe.
-  destruct
-    (ordered_loop_semantics_refines_erased
-       loop env mem1 mem2 Hna Hsafe Hloop)
-    as [mem2&#x27;&#x27; [Hloop&#x27; Heq_loop]].
-  exists mem2&#x27;&#x27;.
-  split.
-  - econstructor; eauto.
-    reflexivity.
-  - exact Heq_loop.
-Qed.
-
-(** Legacy wrapper for proofs that still establish the stronger invariant.
-    Checked endpoints should prefer [semantics_refines_erased] with a
-    trace-specific [ordered_semantics] derivation. *)
-Lemma semantics_refines_erased_global :
-  forall p mem1 mem2,
-    trace_safe p -&gt;
-    parallel_families_ordered p -&gt;
-    semantics p mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.semantics (erase_parallel p) mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  intros p mem1 mem2 Hsafe Hglobal Hsem.
-  eapply semantics_refines_erased.
-  - exact Hsafe.
-  - eapply ordered_semantics_of_global; eauto.
-Qed.
-
-(** Metadata-preserving singleton cleanup for annotated parallel loops. *)
-Fixpoint expr_eqb (e1 e2 : BaseLoop.expr) : bool :=
-  match e1, e2 with
-  | BaseLoop.Constant z1, BaseLoop.Constant z2 =&gt; Z.eqb z1 z2
-  | BaseLoop.Sum a1 b1, BaseLoop.Sum a2 b2 =&gt;
-      expr_eqb a1 a2 &amp;&amp; expr_eqb b1 b2
-  | BaseLoop.Mult k1 e1, BaseLoop.Mult k2 e2 =&gt;
-      Z.eqb k1 k2 &amp;&amp; expr_eqb e1 e2
-  | BaseLoop.Div e1 k1, BaseLoop.Div e2 k2 =&gt;
-      expr_eqb e1 e2 &amp;&amp; Z.eqb k1 k2
-  | BaseLoop.Mod e1 k1, BaseLoop.Mod e2 k2 =&gt;
-      expr_eqb e1 e2 &amp;&amp; Z.eqb k1 k2
-  | BaseLoop.Var n1, BaseLoop.Var n2 =&gt; Nat.eqb n1 n2
-  | BaseLoop.Max a1 b1, BaseLoop.Max a2 b2 =&gt;
-      expr_eqb a1 a2 &amp;&amp; expr_eqb b1 b2
-  | BaseLoop.Min a1 b1, BaseLoop.Min a2 b2 =&gt;
-      expr_eqb a1 a2 &amp;&amp; expr_eqb b1 b2
-  | _, _ =&gt; false
-  end.
-
-Lemma expr_eqb_correct :
-  forall e1 e2,
-    expr_eqb e1 e2 = true -&gt;
-    forall env, BaseLoop.eval_expr env e1 = BaseLoop.eval_expr env e2.
-Proof.
-  induction e1; destruct e2; simpl; try discriminate; intros Heq env;
-    try reflexivity.
-  - apply Z.eqb_eq in Heq. subst. reflexivity.
-  - apply andb_true_iff in Heq as [Ha Hb].
-    rewrite (IHe1_1 _ Ha env), (IHe1_2 _ Hb env). reflexivity.
-  - apply andb_true_iff in Heq as [Hk He].
-    apply Z.eqb_eq in Hk. subst. rewrite (IHe1 _ He env). reflexivity.
-  - apply andb_true_iff in Heq as [He Hk].
-    apply Z.eqb_eq in Hk. subst. rewrite (IHe1 _ He env). reflexivity.
-  - apply andb_true_iff in Heq as [He Hk].
-    apply Z.eqb_eq in Hk. subst. rewrite (IHe1 _ He env). reflexivity.
-  - apply Nat.eqb_eq in Heq. subst. reflexivity.
-  - apply andb_true_iff in Heq as [Ha Hb].
-    rewrite (IHe1_1 _ Ha env), (IHe1_2 _ Hb env). reflexivity.
-  - apply andb_true_iff in Heq as [Ha Hb].
-    rewrite (IHe1_1 _ Ha env), (IHe1_2 _ Hb env). reflexivity.
-Qed.
-
-Fixpoint lift_expr (e : BaseLoop.expr) : BaseLoop.expr :=
+Fixpoint add_const_expr (e: Loop.expr) (k: Z) : Loop.expr :=
   match e with
-  | BaseLoop.Constant c =&gt; BaseLoop.Constant c
-  | BaseLoop.Sum e1 e2 =&gt; BaseLoop.Sum (lift_expr e1) (lift_expr e2)
-  | BaseLoop.Mult k e1 =&gt; BaseLoop.Mult k (lift_expr e1)
-  | BaseLoop.Div e1 k =&gt; BaseLoop.Div (lift_expr e1) k
-  | BaseLoop.Mod e1 k =&gt; BaseLoop.Mod (lift_expr e1) k
-  | BaseLoop.Var n =&gt; BaseLoop.Var (S n)
-  | BaseLoop.Max e1 e2 =&gt; BaseLoop.Max (lift_expr e1) (lift_expr e2)
-  | BaseLoop.Min e1 e2 =&gt; BaseLoop.Min (lift_expr e1) (lift_expr e2)
+  | Loop.Constant c =&gt; Loop.Constant (c + k)
+  | Loop.Sum e1 (Loop.Constant c) =&gt; add_const_expr e1 (c + k)
+  | _ =&gt;
+      if Z.eqb k 0
+      then e
+      else Loop.Sum e (Loop.Constant k)
   end.
 
-Fixpoint subst_expr_at
-    (k : nat) (rep : BaseLoop.expr) (e : BaseLoop.expr) : BaseLoop.expr :=
+Definition succ_expr (e: Loop.expr) : Loop.expr :=
+  add_const_expr e 1.
+
+Definition pred_expr (e: Loop.expr) : Loop.expr :=
+  add_const_expr e (-1).
+
+Fixpoint insert_expr_at (k: nat) (e: Loop.expr) : Loop.expr :=
   match e with
-  | BaseLoop.Constant c =&gt; BaseLoop.Constant c
-  | BaseLoop.Sum e1 e2 =&gt;
-      BaseLoop.Sum (subst_expr_at k rep e1) (subst_expr_at k rep e2)
-  | BaseLoop.Mult n e1 =&gt; BaseLoop.Mult n (subst_expr_at k rep e1)
-  | BaseLoop.Div e1 n =&gt; BaseLoop.Div (subst_expr_at k rep e1) n
-  | BaseLoop.Mod e1 n =&gt; BaseLoop.Mod (subst_expr_at k rep e1) n
-  | BaseLoop.Var n =&gt;
-      if Nat.ltb n k then BaseLoop.Var n
-      else if Nat.eqb n k then rep
-      else BaseLoop.Var (Nat.pred n)
-  | BaseLoop.Max e1 e2 =&gt;
-      BaseLoop.Max (subst_expr_at k rep e1) (subst_expr_at k rep e2)
-  | BaseLoop.Min e1 e2 =&gt;
-      BaseLoop.Min (subst_expr_at k rep e1) (subst_expr_at k rep e2)
+  | Loop.Constant c =&gt; Loop.Constant c
+  | Loop.Sum e1 e2 =&gt; Loop.Sum (insert_expr_at k e1) (insert_expr_at k e2)
+  | Loop.Mult n e1 =&gt; Loop.Mult n (insert_expr_at k e1)
+  | Loop.Div e1 n =&gt; Loop.Div (insert_expr_at k e1) n
+  | Loop.Mod e1 n =&gt; Loop.Mod (insert_expr_at k e1) n
+  | Loop.Var n =&gt;
+      if Nat.ltb n k then Loop.Var n else Loop.Var (S n)
+  | Loop.Max e1 e2 =&gt; Loop.Max (insert_expr_at k e1) (insert_expr_at k e2)
+  | Loop.Min e1 e2 =&gt; Loop.Min (insert_expr_at k e1) (insert_expr_at k e2)
   end.
 
-Fixpoint subst_test_at
-    (k : nat) (rep : BaseLoop.expr) (t : BaseLoop.test) : BaseLoop.test :=
+Fixpoint insert_test_at (k: nat) (t: Loop.test) : Loop.test :=
   match t with
-  | BaseLoop.LE e1 e2 =&gt;
-      BaseLoop.LE (subst_expr_at k rep e1) (subst_expr_at k rep e2)
-  | BaseLoop.EQ e1 e2 =&gt;
-      BaseLoop.EQ (subst_expr_at k rep e1) (subst_expr_at k rep e2)
-  | BaseLoop.And t1 t2 =&gt;
-      BaseLoop.And (subst_test_at k rep t1) (subst_test_at k rep t2)
-  | BaseLoop.Or t1 t2 =&gt;
-      BaseLoop.Or (subst_test_at k rep t1) (subst_test_at k rep t2)
-  | BaseLoop.Not t1 =&gt; BaseLoop.Not (subst_test_at k rep t1)
-  | BaseLoop.TConstantTest b =&gt; BaseLoop.TConstantTest b
+  | Loop.LE e1 e2 =&gt; Loop.LE (insert_expr_at k e1) (insert_expr_at k e2)
+  | Loop.EQ e1 e2 =&gt; Loop.EQ (insert_expr_at k e1) (insert_expr_at k e2)
+  | Loop.And t1 t2 =&gt; Loop.And (insert_test_at k t1) (insert_test_at k t2)
+  | Loop.Or t1 t2 =&gt; Loop.Or (insert_test_at k t1) (insert_test_at k t2)
+  | Loop.Not t1 =&gt; Loop.Not (insert_test_at k t1)
+  | Loop.TConstantTest b =&gt; Loop.TConstantTest b
   end.
 
-Lemma nth_insert_middle :
-  forall (A : Type) pre suf (x d : A),
-    nth (length pre) (pre ++ x :: suf) d = x.
-Proof.
-  induction pre; intros; simpl; auto.
-Qed.
-
-Lemma nth_insert_before :
-  forall (A : Type) pre suf (x d : A) n,
-    (n &lt; length pre)%nat -&gt;
-    nth n (pre ++ x :: suf) d = nth n (pre ++ suf) d.
-Proof.
-  induction pre; intros; simpl in *; [lia|].
-  destruct n; simpl; auto. apply IHpre. lia.
-Qed.
-
-Lemma nth_insert_after :
-  forall (A : Type) pre suf (x d : A) n,
-    (length pre &lt; n)%nat -&gt;
-    nth n (pre ++ x :: suf) d = nth (Nat.pred n) (pre ++ suf) d.
-Proof.
-  induction pre; intros; simpl in *.
-  - destruct n; [lia|]. reflexivity.
-  - destruct n as [|n&#x27;]; [lia|].
-    destruct n&#x27; as [|m]; [lia|]. simpl. apply IHpre. lia.
-Qed.
-
-Lemma lift_expr_correct :
-  forall env x e,
-    BaseLoop.eval_expr (x :: env) (lift_expr e) =
-    BaseLoop.eval_expr env e.
-Proof.
-  induction e; simpl; intros; try reflexivity;
-    try rewrite IHe; try rewrite IHe1, IHe2; reflexivity.
-Qed.
-
-Lemma subst_expr_at_correct :
-  forall pre suf rep e,
-    BaseLoop.eval_expr (pre ++ suf)
-      (subst_expr_at (length pre) rep e) =
-    BaseLoop.eval_expr
-      (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) e.
-Proof.
-  induction e; intros; simpl; try reflexivity.
-  - rewrite IHe1, IHe2. reflexivity.
-  - rewrite IHe. reflexivity.
-  - rewrite IHe. reflexivity.
-  - rewrite IHe. reflexivity.
-  - destruct (Nat.ltb n (length pre)) eqn:Hlt.
-    + apply Nat.ltb_lt in Hlt. rewrite nth_insert_before; auto.
-    + destruct (Nat.eqb n (length pre)) eqn:Heq.
-      * apply Nat.eqb_eq in Heq. subst. rewrite nth_insert_middle. reflexivity.
-      * apply Nat.ltb_ge in Hlt. apply Nat.eqb_neq in Heq.
-        rewrite nth_insert_after; [reflexivity|lia].
-  - rewrite IHe1, IHe2. reflexivity.
-  - rewrite IHe1, IHe2. reflexivity.
-Qed.
-
-Lemma subst_expr_list_at_correct :
-  forall pre suf rep es,
-    map (BaseLoop.eval_expr (pre ++ suf))
-      (map (subst_expr_at (length pre) rep) es) =
-    map
-      (BaseLoop.eval_expr
-        (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf)) es.
-Proof.
-  intros. rewrite map_map. apply map_ext. intro e.
-  apply subst_expr_at_correct.
-Qed.
-
-Lemma subst_test_at_correct :
-  forall pre suf rep tst,
-    BaseLoop.eval_test (pre ++ suf)
-      (subst_test_at (length pre) rep tst) =
-    BaseLoop.eval_test
-      (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tst.
-Proof.
-  induction tst; intros; simpl; try reflexivity.
-  - rewrite !subst_expr_at_correct. reflexivity.
-  - rewrite !subst_expr_at_correct. reflexivity.
-  - rewrite IHtst1, IHtst2. reflexivity.
-  - rewrite IHtst1, IHtst2. reflexivity.
-  - rewrite IHtst. reflexivity.
-Qed.
-
-Definition point_sema_equiv
-    (p1 p2 : InstrPoint) : Prop :=
-  forall st1 st2,
-    ILSema.instr_point_sema p1 st1 st2 &lt;-&gt;
-    ILSema.instr_point_sema p2 st1 st2.
-
-Lemma point_sema_equiv_refl :
-  forall p, point_sema_equiv p p.
-Proof.
-  intros p st1 st2. reflexivity.
-Qed.
-
-Lemma point_sema_equiv_trans :
-  forall p1 p2 p3,
-    point_sema_equiv p1 p2 -&gt;
-    point_sema_equiv p2 p3 -&gt;
-    point_sema_equiv p1 p3.
-Proof.
-  intros p1 p2 p3 H12 H23 st1 st2.
-  specialize (H12 st1 st2).
-  specialize (H23 st1 st2).
-  tauto.
-Qed.
-
-Lemma Forall2_point_sema_equiv_trans :
-  forall xs ys zs,
-    Forall2 point_sema_equiv xs ys -&gt;
-    Forall2 point_sema_equiv ys zs -&gt;
-    Forall2 point_sema_equiv xs zs.
-Proof.
-  intros xs ys zs Hxy.
-  revert zs.
-  induction Hxy; intros zs Hyz; inversion Hyz; subst.
-  - constructor.
-  - constructor.
-    + eapply point_sema_equiv_trans; eauto.
-    + eapply IHHxy; eauto.
-Qed.
-
-Lemma instr_point_list_semantics_equiv :
-  forall tr1 tr2 st1 st2,
-    Forall2 point_sema_equiv tr1 tr2 -&gt;
-    ILSema.instr_point_list_semantics tr1 st1 st2 -&gt;
-    ILSema.instr_point_list_semantics tr2 st1 st2.
-Proof.
-  intros tr1 tr2 st1 st2 Hrel.
-  revert st1 st2.
-  induction Hrel; intros st1 st2 Hsem.
-  - inversion Hsem; subst. constructor. assumption.
-  - inversion Hsem as [|st1&#x27; stmid st2&#x27; ip il Hip Htail]; subst.
-    econstructor.
-    + apply (proj1 (H st1 stmid)). exact Hip.
-    + eapply IHHrel. exact Htail.
-Qed.
-
-Fixpoint subst_stmt_at
-    (k : nat) (rep : BaseLoop.expr) (s : stmt) : stmt :=
-  match s with
-  | Loop mode od lb ub body =&gt;
-      Loop mode od
-        (subst_expr_at k rep lb)
-        (subst_expr_at k rep ub)
-        (subst_stmt_at (S k) (lift_expr rep) body)
-  | Instr i es =&gt;
-      Instr i (map (subst_expr_at k rep) es)
-  | Seq ss =&gt; Seq (subst_stmts_at k rep ss)
-  | Guard tst body =&gt;
-      Guard
-        (subst_test_at k rep tst)
-        (subst_stmt_at k rep body)
+Fixpoint insert_stmt_at (k: nat) (st: Loop.stmt) : Loop.stmt :=
+  match st with
+  | Loop.Loop lb ub body =&gt;
+      Loop.Loop
+        (insert_expr_at k lb)
+        (insert_expr_at k ub)
+        (insert_stmt_at (S k) body)
+  | Loop.Instr i es =&gt; Loop.Instr i (map (insert_expr_at k) es)
+  | Loop.Seq sts =&gt; Loop.Seq (insert_stmt_list_at k sts)
+  | Loop.Guard t body =&gt; Loop.Guard (insert_test_at k t) (insert_stmt_at k body)
   end
-with subst_stmts_at
-    (k : nat) (rep : BaseLoop.expr) (ss : stmt_list) : stmt_list :=
-  match ss with
-  | SNil =&gt; SNil
-  | SCons s ss&#x27; =&gt;
-      SCons (subst_stmt_at k rep s) (subst_stmts_at k rep ss&#x27;)
+with insert_stmt_list_at (k: nat) (sts: Loop.stmt_list) : Loop.stmt_list :=
+  match sts with
+  | Loop.SNil =&gt; Loop.SNil
+  | Loop.SCons st sts&#x27; =&gt;
+      Loop.SCons (insert_stmt_at k st) (insert_stmt_list_at k sts&#x27;)
   end.
 
-(** * Constant unrolling for annotated loops
+Lemma expr_eqb_refl :
+  forall e,
+    Subst.expr_eqb e e = true.
+Proof.
+  induction e; simpl.
+  - apply Z.eqb_refl.
+  - rewrite IHe1, IHe2. reflexivity.
+  - rewrite Z.eqb_refl, IHe. reflexivity.
+  - rewrite IHe, Z.eqb_refl. reflexivity.
+  - rewrite IHe, Z.eqb_refl. reflexivity.
+  - apply Nat.eqb_refl.
+  - rewrite IHe1, IHe2. reflexivity.
+  - rewrite IHe1, IHe2. reflexivity.
+Qed.
 
-    Constant unrolling is deliberately restricted to [SeqMode].  Parallel and
-    vector loops retain their execution mode, origin tag, and bounds; the pass
-    only recurses into their bodies, where nested sequential loops may still be
-    unfolded.  This makes the postpass compositional with an already validated
-    parallel route without transporting or reconstructing its annotations. *)
-
-Definition constant_bounds
-    (lb ub : BaseLoop.expr) : option (Z * Z) :=
-  match lb, ub with
-  | BaseLoop.Constant l, BaseLoop.Constant u =&gt; Some (l, u)
-  | _, _ =&gt; None
+Fixpoint prefix_peel_steps (fuel: nat) (cur: Loop.expr) : list Loop.expr :=
+  match fuel with
+  | O =&gt; nil
+  | S fuel&#x27; =&gt;
+      cur :: prefix_peel_steps fuel&#x27; (succ_expr cur)
   end.
 
-Fixpoint const_unroll_values
-    (vals : list Z) (body : stmt) : stmt_list :=
+Fixpoint check_peel_steps (expected: Loop.expr) (steps: list Loop.expr) : bool :=
+  match steps with
+  | nil =&gt; true
+  | step :: steps&#x27; =&gt;
+      Subst.expr_eqb step expected &amp;&amp;
+      check_peel_steps (succ_expr expected) steps&#x27;
+  end.
+
+Fixpoint lower_peel_steps
+    (expected ub: Loop.expr) (body: Loop.stmt) (steps: list Loop.expr)
+    : Loop.stmt_list :=
+  match steps with
+  | nil =&gt;
+      Loop.SCons (Loop.Loop expected ub body) Loop.SNil
+  | step :: steps&#x27; =&gt;
+      Loop.SCons
+        (Loop.Guard
+           (Loop.LE (succ_expr step) ub)
+           (Subst.subst_stmt_at 0 step body))
+        (lower_peel_steps (succ_expr expected) ub body steps&#x27;)
+  end.
+
+Fixpoint suffix_peel_stmt
+    (fuel: nat) (lb ub: Loop.expr) (body: Loop.stmt) : Loop.stmt :=
+  match fuel with
+  | O =&gt; Loop.Loop lb ub body
+  | S fuel&#x27; =&gt;
+      let last := pred_expr ub in
+      Loop.Seq
+        (Loop.SCons
+          (suffix_peel_stmt fuel&#x27; lb last body)
+          (Loop.SCons
+            (Loop.Guard
+              (Loop.LE (succ_expr lb) ub)
+              (Subst.subst_stmt_at 0 last body))
+            Loop.SNil))
+  end.
+
+Inductive peel_plan : Type :=
+| PeelPrefix : list Loop.expr -&gt; peel_plan
+| PeelSuffix : nat -&gt; peel_plan.
+
+Definition prefix_peel_plan (fuel: nat) (cur: Loop.expr) : peel_plan :=
+  PeelPrefix (prefix_peel_steps fuel cur).
+
+Definition check_peel_plan
+    (cur _ub: Loop.expr) (plan: peel_plan) : bool :=
+  match plan with
+  | PeelPrefix steps =&gt; check_peel_steps cur steps
+  | PeelSuffix _ =&gt; true
+  end.
+
+Definition lower_peel_plan_stmt_list
+    (plan: peel_plan) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt_list :=
+  match plan with
+  | PeelPrefix steps =&gt; lower_peel_steps cur ub body steps
+  | PeelSuffix fuel =&gt; Loop.SCons (suffix_peel_stmt fuel cur ub body) Loop.SNil
+  end.
+
+Definition lower_peel_plan_stmt
+    (plan: peel_plan) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt :=
+  match plan with
+  | PeelPrefix steps =&gt; Loop.Seq (lower_peel_steps cur ub body steps)
+  | PeelSuffix fuel =&gt; suffix_peel_stmt fuel cur ub body
+  end.
+
+Definition peel_unroll_stmt_list
+    (fuel: nat) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt_list :=
+  lower_peel_plan_stmt_list (prefix_peel_plan fuel cur) cur ub body.
+
+Lemma prefix_peel_steps_checked :
+  forall fuel cur,
+    check_peel_steps cur (prefix_peel_steps fuel cur) = true.
+Proof.
+  induction fuel as [|fuel IH]; intros cur; simpl.
+  - reflexivity.
+  - rewrite expr_eqb_refl. apply IH.
+Qed.
+
+Example check_peel_steps_accepts_prefix_example :
+  check_peel_steps
+    (Loop.Var 0)
+    (prefix_peel_steps 2 (Loop.Var 0)) = true.
+Proof. reflexivity. Qed.
+
+Example check_peel_steps_rejects_skipped_prefix_example :
+  check_peel_steps
+    (Loop.Var 0)
+    [succ_expr (Loop.Var 0)] = false.
+Proof. reflexivity. Qed.
+
+Example check_peel_plan_accepts_suffix_example :
+  check_peel_plan
+    (Loop.Var 0)
+    (Loop.Var 1)
+    (PeelSuffix 2) = true.
+Proof. reflexivity. Qed.
+
+Fixpoint seq_values (vals: list Z) (body: Loop.stmt) : Loop.stmt_list :=
   match vals with
-  | [] =&gt; SNil
-  | z :: vals&#x27; =&gt;
-      SCons
-        (subst_stmt_at 0 (BaseLoop.Constant z) body)
-        (const_unroll_values vals&#x27; body)
+  | nil =&gt; Loop.SNil
+  | v :: vals&#x27; =&gt;
+      Loop.SCons
+        (Subst.subst_stmt_at 0 (Loop.Constant v) body)
+        (seq_values vals&#x27; body)
   end.
 
-Fixpoint const_unroll_stmt (s : stmt) : stmt :=
-  match s with
-  | Loop mode od lb ub body =&gt;
-      let body&#x27; := const_unroll_stmt body in
-      match mode with
-      | SeqMode =&gt;
-          match constant_bounds lb ub with
-          | Some (l, u) =&gt; Seq (const_unroll_values (Zrange l u) body&#x27;)
-          | None =&gt; Loop SeqMode od lb ub body&#x27;
-          end
-      | ParMode =&gt; Loop ParMode od lb ub body&#x27;
-      | VecMode =&gt; Loop VecMode od lb ub body&#x27;
-      end
-  | Instr i es =&gt; Instr i es
-  | Seq ss =&gt; Seq (const_unroll_stmts ss)
-  | Guard tst body =&gt; Guard tst (const_unroll_stmt body)
-  end
-with const_unroll_stmts (ss : stmt_list) : stmt_list :=
-  match ss with
-  | SNil =&gt; SNil
-  | SCons s ss&#x27; =&gt;
-      SCons (const_unroll_stmt s) (const_unroll_stmts ss&#x27;)
-  end.
-
-Fixpoint const_unroll_stmt_changed (s : stmt) : bool :=
-  match s with
-  | Loop mode _ lb ub body =&gt;
-      match mode with
-      | SeqMode =&gt;
-          match constant_bounds lb ub with
-          | Some _ =&gt; true
-          | None =&gt; const_unroll_stmt_changed body
-          end
-      | ParMode | VecMode =&gt; const_unroll_stmt_changed body
-      end
-  | Instr _ _ =&gt; false
-  | Seq ss =&gt; const_unroll_stmts_changed ss
-  | Guard _ body =&gt; const_unroll_stmt_changed body
-  end
-with const_unroll_stmts_changed (ss : stmt_list) : bool :=
-  match ss with
-  | SNil =&gt; false
-  | SCons s ss&#x27; =&gt;
-      const_unroll_stmt_changed s || const_unroll_stmts_changed ss&#x27;
-  end.
-
-Definition const_unroll (p : t) : t :=
-  let &#x27;((s, ctxt), vars) := p in
-  ((const_unroll_stmt s, ctxt), vars).
-
-Definition const_unroll_changed (p : t) : bool :=
-  let &#x27;(s, _, _) := p in const_unroll_stmt_changed s.
-
-(** * Metadata-preserving cleanup
-
-    Sequential singleton loops may be substituted away.  Parallel and vector
-    loops retain their mode and origin tag. *)
-
-Fixpoint singleton_elim_stmt (s : stmt) : stmt :=
-  match s with
-  | Loop mode od lb ub body =&gt;
-      let body&#x27; := singleton_elim_stmt body in
-      match mode with
-      | SeqMode =&gt;
-          if expr_eqb
-               ub (BaseLoop.make_sum lb (BaseLoop.Constant 1))
-          then subst_stmt_at 0 lb body&#x27;
-          else Loop SeqMode od lb ub body&#x27;
-      | ParMode =&gt; Loop ParMode od lb ub body&#x27;
-      | VecMode =&gt; Loop VecMode od lb ub body&#x27;
-      end
-  | Instr i es =&gt; Instr i es
-  | Seq ss =&gt; Seq (singleton_elim_stmts ss)
-  | Guard tst body =&gt; Guard tst (singleton_elim_stmt body)
-  end
-with singleton_elim_stmts (ss : stmt_list) : stmt_list :=
-  match ss with
-  | SNil =&gt; SNil
-  | SCons s ss&#x27; =&gt;
-      SCons (singleton_elim_stmt s) (singleton_elim_stmts ss&#x27;)
-  end.
-
-Definition cleanup (p : t) : t :=
-  let &#x27;((s, ctxt), vars) := p in
-  ((singleton_elim_stmt s, ctxt), vars).
-
-Lemma expr_to_aff_subst_inv :
-  forall e k rep aff,
-    BaseLoop.expr_to_aff (subst_expr_at k rep e) = Okk aff -&gt;
-    exists aff0, BaseLoop.expr_to_aff e = Okk aff0.
+Lemma seq_values_semantics :
+  forall vals body env mem1 mem2,
+    Loop.loop_semantics (Loop.Seq (seq_values vals body)) env mem1 mem2 &lt;-&gt;
+    Instr.IterSem.iter_semantics
+      (fun x =&gt; Loop.loop_semantics body (x :: env))
+      vals
+      mem1
+      mem2.
 Proof.
-  induction e; intros k rep aff Haff; simpl in Haff.
-  - eexists. reflexivity.
-  - destruct (BaseLoop.expr_to_aff (subst_expr_at k rep e1))
-      as [[a1 c1]|] eqn:H1; try discriminate.
-    destruct (BaseLoop.expr_to_aff (subst_expr_at k rep e2))
-      as [[a2 c2]|] eqn:H2; try discriminate.
-    destruct (IHe1 _ _ _ H1) as [[a1&#x27; c1&#x27;] H1&#x27;].
-    destruct (IHe2 _ _ _ H2) as [[a2&#x27; c2&#x27;] H2&#x27;].
-    exists (add_vector a1&#x27; a2&#x27;, c1&#x27; + c2&#x27;).
-    simpl. now rewrite H1&#x27;, H2&#x27;.
-  - destruct (BaseLoop.expr_to_aff (subst_expr_at k rep e))
-      as [[a c]|] eqn:He; try discriminate.
-    destruct (IHe _ _ _ He) as [[a&#x27; c&#x27;] He&#x27;].
-    exists (mult_vector z a&#x27;, z * c&#x27;).
-    simpl. now rewrite He&#x27;.
-  - discriminate.
-  - discriminate.
-  - destruct (Nat.ltb n k); [|destruct (Nat.eqb n k)];
-      eexists; reflexivity.
-  - discriminate.
-  - discriminate.
+  induction vals as [|v vals IH]; intros body env mem1 mem2; simpl.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem.
+    + inversion Hsem as
+        [| |env0 st0 sts0 mem10 mem20 mem30 Hhead Htail| | |];
+        subst; clear Hsem.
+      apply Subst.subst_stmt_at_semantics in Hhead.
+      simpl in Hhead.
+      apply IH in Htail.
+      econstructor; eauto.
+    + inversion Hsem as
+        [|v0 vals0 mem10 mem20 mem30 Hhead Htail];
+        subst; clear Hsem.
+      eapply Loop.LSeq.
+      * apply Subst.subst_stmt_at_semantics. simpl. exact Hhead.
+      * apply IH. exact Htail.
 Qed.
 
-Lemma exprlist_to_aff_subst_inv :
-  forall es k rep affs,
-    BaseLoop.exprlist_to_aff (map (subst_expr_at k rep) es) =
-      Okk affs -&gt;
-    exists affs0, BaseLoop.exprlist_to_aff es = Okk affs0.
+Lemma seq_single_loop_semantics :
+  forall cur ub body env mem1 mem2,
+    Loop.loop_semantics
+      (Loop.Seq (Loop.SCons (Loop.Loop cur ub body) Loop.SNil))
+      env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
 Proof.
-  induction es as [|e es IH]; intros k rep affs Haff; simpl in Haff.
-  - eexists. reflexivity.
-  - destruct (BaseLoop.expr_to_aff (subst_expr_at k rep e))
-      as [aff|] eqn:He; try discriminate.
-    destruct (BaseLoop.exprlist_to_aff
-      (map (subst_expr_at k rep) es))
-      as [rest|] eqn:Hrest; try discriminate.
-    destruct (expr_to_aff_subst_inv _ _ _ _ He) as [aff0 He0].
-    destruct (IH _ _ _ Hrest) as [rest0 Hrest0].
-    exists (aff0 :: rest0).
-    simpl. now rewrite He0, Hrest0.
-Qed.
-
-Scheme p_stmt_mutind := Induction for stmt Sort Prop
-with p_stmts_mutind := Induction for stmt_list Sort Prop.
-Combined Scheme p_stmt_stmts_mutind from p_stmt_mutind, p_stmts_mutind.
-
-Definition subst_safe_inv_stmt_goal (s : stmt) : Prop :=
-  forall k rep,
-    trace_safe_stmt (subst_stmt_at k rep s) -&gt;
-    trace_safe_stmt s.
-
-Definition subst_safe_inv_stmts_goal (ss : stmt_list) : Prop :=
-  forall k rep,
-    trace_safe_stmts (subst_stmts_at k rep ss) -&gt;
-    trace_safe_stmts ss.
-
-Lemma subst_trace_safe_inv_mutual :
-  (forall s, subst_safe_inv_stmt_goal s) /\
-  (forall ss, subst_safe_inv_stmts_goal ss).
-Proof.
-  apply p_stmt_stmts_mutind;
-    unfold subst_safe_inv_stmt_goal, subst_safe_inv_stmts_goal.
-  - intros mode od lb ub body IH k rep Hsafe.
-    simpl in Hsafe |- *. eapply IH; eauto.
-  - intros i es k rep Hsafe. simpl in *.
-    destruct Hsafe as [affs Haff].
-    destruct (exprlist_to_aff_subst_inv _ _ _ _ Haff) as [affs0 Haff0].
-    exists affs0. exact Haff0.
-  - intros ss IH k rep Hsafe. simpl in *. eapply IH; eauto.
-  - intros tst body IH k rep Hsafe. simpl in *. eapply IH; eauto.
-  - intros k rep Hsafe. exact I.
-  - intros s IHs ss IHss k rep Hsafe. simpl in *.
-    destruct Hsafe as [Hs Hss]. split; [eapply IHs|eapply IHss]; eauto.
-Qed.
-
-Lemma subst_trace_safe_stmt_inv :
-  forall s k rep,
-    trace_safe_stmt (subst_stmt_at k rep s) -&gt;
-    trace_safe_stmt s.
-Proof.
-  exact (proj1 subst_trace_safe_inv_mutual).
-Qed.
-
-Definition cleanup_safe_inv_stmt_goal (s : stmt) : Prop :=
-  trace_safe_stmt (singleton_elim_stmt s) -&gt;
-  trace_safe_stmt s.
-
-Definition cleanup_safe_inv_stmts_goal (ss : stmt_list) : Prop :=
-  trace_safe_stmts (singleton_elim_stmts ss) -&gt;
-  trace_safe_stmts ss.
-
-Lemma cleanup_trace_safe_inv_mutual :
-  (forall s, cleanup_safe_inv_stmt_goal s) /\
-  (forall ss, cleanup_safe_inv_stmts_goal ss).
-Proof.
-  apply p_stmt_stmts_mutind;
-    unfold cleanup_safe_inv_stmt_goal, cleanup_safe_inv_stmts_goal.
-  - intros mode od lb ub body IH Hsafe.
-    destruct mode; simpl in Hsafe |- *.
-    + destruct (expr_eqb ub
-        (BaseLoop.make_sum lb (BaseLoop.Constant 1))) eqn:Hsingle.
-      * apply IH. eapply subst_trace_safe_stmt_inv. exact Hsafe.
-      * apply IH. exact Hsafe.
-    + apply IH. exact Hsafe.
-    + apply IH. exact Hsafe.
-  - intros i es Hsafe. exact Hsafe.
-  - intros ss IH Hsafe. simpl in Hsafe |- *. apply IH. exact Hsafe.
-  - intros tst body IH Hsafe. simpl in Hsafe |- *. apply IH. exact Hsafe.
-  - intros Hsafe. exact I.
-  - intros s IHs ss IHss Hsafe. simpl in Hsafe |- *.
-    destruct Hsafe as [Hs Hss]. split; [apply IHs|apply IHss]; assumption.
-Qed.
-
-Lemma cleanup_trace_safe_inv :
-  forall p,
-    trace_safe (cleanup p) -&gt;
-    trace_safe p.
-Proof.
-  intros [[s ctxt] vars] Hsafe.
-  exact ((proj1 cleanup_trace_safe_inv_mutual) s Hsafe).
-Qed.
-
-Lemma mk_instr_point_subst_equiv :
-  forall pre suf rep i es aff_sub aff_orig,
-    BaseLoop.exprlist_to_aff
-      (map (subst_expr_at (length pre) rep) es) =
-      Okk aff_sub -&gt;
-    BaseLoop.exprlist_to_aff es = Okk aff_orig -&gt;
-    point_sema_equiv
-      (BaseLoop.mk_instr_point i
-        (map (subst_expr_at (length pre) rep) es)
-        (pre ++ suf))
-      (BaseLoop.mk_instr_point i es
-        (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf)).
-Proof.
-  intros pre suf rep i es aff_sub aff_orig Hsub Horig st1 st2.
-  pose proof
-    (BaseLoop.exprlist_to_aff_correct
-       (map (subst_expr_at (length pre) rep) es)
-       (pre ++ suf) aff_sub Hsub) as Hsub_eval.
-  pose proof
-    (BaseLoop.exprlist_to_aff_correct es
-       (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf)
-       aff_orig Horig) as Horig_eval.
-  pose proof
-    (subst_expr_list_at_correct pre suf rep es) as Heval.
-  assert (Hargs :
-    affine_product aff_sub (pre ++ suf) =
-    affine_product aff_orig
-      (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf)).
-  {
-    rewrite &lt;- Hsub_eval, &lt;- Horig_eval. exact Heval.
-  }
-  unfold BaseLoop.mk_instr_point.
-  rewrite Hsub, Horig. simpl.
-  split; intro Hsem; inversion Hsem as [wcs rcs Hstep]; subst;
-    econstructor; simpl in *.
-  - rewrite &lt;- Hargs. exact Hstep.
-  - rewrite Hargs. exact Hstep.
-Qed.
-
-Lemma Forall2_concat_point_sema_equiv :
-  forall trs1 trs2,
-    Forall2 (Forall2 point_sema_equiv) trs1 trs2 -&gt;
-    Forall2 point_sema_equiv (concat trs1) (concat trs2).
-Proof.
-  intros trs1 trs2 Hrel.
-  induction Hrel; simpl.
-  - constructor.
-  - apply Forall2_app; assumption.
-Qed.
-
-Lemma Forall2_split_cons_left :
-  forall A B (R : A -&gt; B -&gt; Prop) pre x post ys,
-    Forall2 R (pre ++ x :: post) ys -&gt;
-    exists pre&#x27; y post&#x27;,
-      ys = pre&#x27; ++ y :: post&#x27; /\
-      Forall2 R pre pre&#x27; /\
-      R x y /\
-      Forall2 R post post&#x27;.
-Proof.
-  intros A B R pre.
-  induction pre as [|a pre IH]; intros x post ys Hrel.
-  - simpl in Hrel.
-    inversion Hrel as [|? y ? ys&#x27; Hxy Htail]; subst.
-    exists (nil : list B).
-    exists y.
-    exists ys&#x27;.
-    repeat split; auto.
-  - simpl in Hrel.
-    inversion Hrel as [|? y ? ys&#x27; Hay Htail]; subst.
-    destruct (IH _ _ _ Htail)
-      as [pre&#x27; [y&#x27; [post&#x27; [Hys [Hpre [Hxy Hpost]]]]]].
-    exists (y :: pre&#x27;).
-    exists y&#x27;.
-    exists post&#x27;.
-    subst ys&#x27;. simpl. repeat split; auto.
-Qed.
-
-Lemma interleave_family_point_equiv :
-  forall trs1 out1 trs2,
-    interleave_family trs1 out1 -&gt;
-    Forall2 (Forall2 point_sema_equiv) trs1 trs2 -&gt;
-    exists out2,
-      interleave_family trs2 out2 /\
-      Forall2 point_sema_equiv out1 out2.
-Proof.
-  intros trs1 out1 trs2 Hinter.
-  revert trs2.
-  induction Hinter; intros trs2 Hfamilies.
-  - inversion Hfamilies; subst.
-    exists (nil : list InstrPoint). split; constructor.
-  - inversion Hfamilies as [|? tr2 ? trs2&#x27; Hnil Hrest]; subst.
-    inversion Hnil; subst.
-    destruct (IHHinter _ Hrest) as [out2 [Hinter2 Hout]].
-    exists out2. split; [constructor; exact Hinter2|exact Hout].
-  - destruct
-      (Forall2_split_cons_left
-        _ _ (Forall2 point_sema_equiv)
-        pre (x :: xs) post trs2 Hfamilies)
-      as [pre&#x27; [tr&#x27; [post&#x27; [Htrs2 [Hpre [Htr Hpost]]]]]].
-    inversion Htr; subst.
-    assert (Hreduced :
-      Forall2 (Forall2 point_sema_equiv)
-        (pre ++ xs :: post) (pre&#x27; ++ l&#x27; :: post&#x27;)).
-    {
-      apply Forall2_app; [exact Hpre|].
-      constructor; assumption.
-    }
-    destruct (IHHinter _ Hreduced) as [out2 [Hinter2 Hout]].
-    exists (y :: out2). split.
-    + constructor. exact Hinter2.
-    + constructor; assumption.
-Qed.
-
-Lemma Forall2_trace_refine :
-  forall A B C (P : A -&gt; B -&gt; Prop) (Q : A -&gt; C -&gt; Prop)
-      (R : B -&gt; C -&gt; Prop) xs ys,
-    Forall2 P xs ys -&gt;
-    (forall x y, P x y -&gt; exists z, Q x z /\ R y z) -&gt;
-    exists zs, Forall2 Q xs zs /\ Forall2 R ys zs.
-Proof.
-  intros A B C P Q R xs ys Hfor Hstep.
-  induction Hfor.
-  - exists (nil : list C). split; constructor.
-  - destruct (Hstep _ _ H) as [z [HQ HR]].
-    destruct IHHfor as [zs [HQs HRs]].
-    exists (z :: zs). split; constructor; assumption.
-Qed.
-
-Local Lemma par_trace_families_refine :
-  forall body1 body2
-      (env1 env2 : Z -&gt; list Z) zs trs,
-    (forall z tr,
-      par_trace body1 (env1 z) tr -&gt;
-      exists tr0,
-        par_trace body2 (env2 z) tr0 /\
-        Forall2 point_sema_equiv tr tr0) -&gt;
-    Forall2 (fun z tr =&gt; par_trace body1 (env1 z) tr) zs trs -&gt;
-    exists trs0,
-      Forall2 (fun z tr =&gt; par_trace body2 (env2 z) tr) zs trs0 /\
-      Forall2 (Forall2 point_sema_equiv) trs trs0.
-Proof.
-  intros body1 body2 env1 env2 zs trs Hpoint Htraces.
-  eapply Forall2_trace_refine; eauto.
-Qed.
-
-Definition subst_trace_stmt_goal (s : stmt) : Prop :=
-  forall pre suf rep tr,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (subst_stmt_at (length pre) rep s) -&gt;
-    par_trace
-      (subst_stmt_at (length pre) rep s) (pre ++ suf) tr -&gt;
-    exists tr0,
-      par_trace s
-        (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-
-Definition subst_trace_stmts_goal (ss : stmt_list) : Prop :=
-  forall pre suf rep tr,
-    trace_safe_stmts ss -&gt;
-    trace_safe_stmts (subst_stmts_at (length pre) rep ss) -&gt;
-    par_traces
-      (subst_stmts_at (length pre) rep ss) (pre ++ suf) tr -&gt;
-    exists tr0,
-      par_traces ss
-        (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-
-Local Lemma subst_par_trace_families_refine :
-  forall body pre suf rep zs trs,
-    subst_trace_stmt_goal body -&gt;
-    trace_safe_stmt body -&gt;
-    trace_safe_stmt
-      (subst_stmt_at (S (length pre)) (lift_expr rep) body) -&gt;
-    Forall2
-      (fun z tr =&gt;
-        par_trace
-          (subst_stmt_at (S (length pre)) (lift_expr rep) body)
-          (z :: pre ++ suf) tr)
-      zs trs -&gt;
-    exists trs0,
-      Forall2
-        (fun z tr =&gt;
-          par_trace body
-            (z :: pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tr)
-        zs trs0 /\
-      Forall2 (Forall2 point_sema_equiv) trs trs0.
-Proof.
-  intros body pre suf rep zs trs IH Hsafe Hsafe_sub Htraces.
-  eapply par_trace_families_refine; [|exact Htraces].
-  intros z tr Htrace.
-  specialize
-    (IH (z :: pre) suf (lift_expr rep) tr Hsafe Hsafe_sub Htrace).
-  simpl in IH.
-  rewrite lift_expr_correct in IH.
-  exact IH.
-Qed.
-
-Lemma subst_par_trace_refine_mutual :
-  (forall s, subst_trace_stmt_goal s) /\
-  (forall ss, subst_trace_stmts_goal ss).
-Proof.
-  apply p_stmt_stmts_mutind;
-    unfold subst_trace_stmt_goal, subst_trace_stmts_goal.
-  - intros mode od lb ub body IH pre suf rep tr Hsafe Hsafe_sub Htrace.
-    simpl in Hsafe, Hsafe_sub, Htrace.
-    destruct mode.
-    + inversion Htrace as
-          [| | | |
-           od0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-             Hrange Htraces Hconcat
-           | |]; subst.
-      destruct
-        (subst_par_trace_families_refine
-          body pre suf rep _ _ IH Hsafe Hsafe_sub Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      exists (concat trs0). split.
-      * eapply PTLoopSeq with
-            (zs := Zrange
-              (BaseLoop.eval_expr (pre ++ suf)
-                (subst_expr_at (length pre) rep lb))
-              (BaseLoop.eval_expr (pre ++ suf)
-                (subst_expr_at (length pre) rep ub)))
-            (trs := trs0).
-        -- f_equal; apply subst_expr_at_correct.
-        -- exact Htraces0.
-        -- reflexivity.
-      * eapply Forall2_concat_point_sema_equiv. exact Hrels.
-    + inversion Htrace as
-          [| | | | | |
-           d0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-             Hrange Htraces Hinter]; subst.
-      destruct
-        (subst_par_trace_families_refine
-          body pre suf rep _ _ IH Hsafe Hsafe_sub Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      destruct (interleave_family_point_equiv _ _ _ Hinter Hrels)
-        as [tr0 [Hinter0 Hrel0]].
-      exists tr0. split.
-      * eapply PTLoopPar with
-            (zs := Zrange
-              (BaseLoop.eval_expr (pre ++ suf)
-                (subst_expr_at (length pre) rep lb))
-              (BaseLoop.eval_expr (pre ++ suf)
-                (subst_expr_at (length pre) rep ub)))
-            (trs := trs0).
-        -- f_equal; apply subst_expr_at_correct.
-        -- exact Htraces0.
-        -- exact Hinter0.
-      * exact Hrel0.
-    + inversion Htrace as
-          [| | | | |
-           od0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-             Hrange Htraces Hconcat
-           |]; subst.
-      destruct
-        (subst_par_trace_families_refine
-          body pre suf rep _ _ IH Hsafe Hsafe_sub Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      exists (concat trs0). split.
-      * eapply PTLoopVec with
-            (zs := Zrange
-              (BaseLoop.eval_expr (pre ++ suf)
-                (subst_expr_at (length pre) rep lb))
-              (BaseLoop.eval_expr (pre ++ suf)
-                (subst_expr_at (length pre) rep ub)))
-            (trs := trs0).
-        -- f_equal; apply subst_expr_at_correct.
-        -- exact Htraces0.
-        -- reflexivity.
-      * eapply Forall2_concat_point_sema_equiv. exact Hrels.
-  - intros i es pre suf rep tr Hsafe Hsafe_sub Htrace.
-    simpl in Hsafe, Hsafe_sub, Htrace.
-    inversion Htrace; subst.
-    destruct Hsafe as [aff_orig Horig].
-    destruct Hsafe_sub as [aff_sub Hsub].
-    exists [BaseLoop.mk_instr_point i es
-      (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf)].
-    split.
+  intros cur ub body env mem1 mem2.
+  split; intros Hsem.
+  - inversion_clear Hsem.
+    inversion H0; subst; clear H0.
+    exact H.
+  - eapply Loop.LSeq.
+    + exact Hsem.
     + constructor.
+Qed.
+
+Lemma seq_single_stmt_semantics :
+  forall st env mem1 mem2,
+    Loop.loop_semantics
+      (Loop.Seq (Loop.SCons st Loop.SNil))
+      env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics st env mem1 mem2.
+Proof.
+  intros st env mem1 mem2.
+  split; intros Hsem.
+  - inversion_clear Hsem.
+    inversion H0; subst; clear H0.
+    exact H.
+  - eapply Loop.LSeq.
+    + exact Hsem.
     + constructor.
-      * eapply mk_instr_point_subst_equiv; eauto.
-      * constructor.
-  - intros ss IH pre suf rep tr Hsafe Hsafe_sub Htrace.
-    simpl in *.
-    inversion Htrace as [|env0 sts0 tr0 Htrs| | | | |]; subst.
-    destruct (IH pre suf rep tr Hsafe Hsafe_sub Htrs) as [tr0 [Ht Hr]].
-    exists tr0. split; [constructor; exact Ht|exact Hr].
-  - intros tst body IH pre suf rep tr Hsafe Hsafe_sub Htrace.
-    simpl in Hsafe, Hsafe_sub, Htrace.
-    inversion Htrace as
-        [| |
-         env0 tst0 body0 tr0 Htest Hbody
-         | env0 tst0 body0 Htest
-         | | |]; subst.
-    + destruct (IH pre suf rep tr Hsafe Hsafe_sub Hbody) as [tr0 [Ht Hr]].
-      exists tr0. split.
-      * eapply PTGuardTrue.
-        -- rewrite &lt;- (subst_test_at_correct pre suf rep tst). exact Htest.
-        -- exact Ht.
-      * exact Hr.
-    + exists (nil : list InstrPoint). split.
-      * eapply PTGuardFalse.
-        rewrite &lt;- (subst_test_at_correct pre suf rep tst). exact Htest.
-      * constructor.
-  - intros pre suf rep tr Hsafe Hsafe_sub Htrace.
-    inversion Htrace; subst.
-    exists (nil : list InstrPoint). split; constructor.
-  - intros s IHs ss IHss pre suf rep tr Hsafe Hsafe_sub Htrace.
-    simpl in Hsafe, Hsafe_sub.
-    destruct Hsafe as [Hsafe_s Hsafe_ss].
-    destruct Hsafe_sub as [Hsafe_sub_s Hsafe_sub_ss].
-    inversion Htrace as
-        [|env0 st0 sts0 tr1 tr2 Htr1 Htr2]; subst.
-    destruct (IHs pre suf rep tr1 Hsafe_s Hsafe_sub_s Htr1)
-      as [tr1&#x27; [Ht1 Hr1]].
-    destruct (IHss pre suf rep tr2 Hsafe_ss Hsafe_sub_ss Htr2)
-      as [tr2&#x27; [Ht2 Hr2]].
-    exists (tr1&#x27; ++ tr2&#x27;). split.
-    + econstructor; eauto.
-    + apply Forall2_app; assumption.
 Qed.
 
-Lemma subst_par_trace_refine :
-  forall s pre suf rep tr,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (subst_stmt_at (length pre) rep s) -&gt;
-    par_trace
-      (subst_stmt_at (length pre) rep s) (pre ++ suf) tr -&gt;
-    exists tr0,
-      par_trace s
-        (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tr0 /\
-      Forall2 point_sema_equiv tr tr0.
+Lemma add_const_expr_correct :
+  forall env e k,
+    Loop.eval_expr env (add_const_expr e k) = Loop.eval_expr env e + k.
 Proof.
-  exact (proj1 subst_par_trace_refine_mutual).
+  intros env e.
+  induction e; intros k; simpl.
+  - lia.
+  - destruct e2; simpl.
+    + rewrite IHe1. lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
 Qed.
 
-Lemma constant_bounds_some :
-  forall lb ub l u,
-    constant_bounds lb ub = Some (l, u) -&gt;
-    lb = BaseLoop.Constant l /\ ub = BaseLoop.Constant u.
-Proof.
-  intros lb ub l u Hbounds.
-  destruct lb; try discriminate.
-  destruct ub; try discriminate.
-  inversion Hbounds; subst. auto.
-Qed.
-
-(** Each generated statement first reflects through capture-avoiding
-    substitution, then through the recursively transformed body.  The result
-    is collected in the original [Zrange] order required by [PTLoopSeq]. *)
-Lemma const_unroll_values_par_traces_refine :
-  forall vals body body&#x27; env tr,
-    (forall env&#x27; tr&#x27;,
-      trace_safe_stmt body -&gt;
-      trace_safe_stmt body&#x27; -&gt;
-      par_trace body&#x27; env&#x27; tr&#x27; -&gt;
-      exists tr0,
-        par_trace body env&#x27; tr0 /\
-        Forall2 point_sema_equiv tr&#x27; tr0) -&gt;
-    trace_safe_stmt body -&gt;
-    trace_safe_stmts (const_unroll_values vals body&#x27;) -&gt;
-    par_traces (const_unroll_values vals body&#x27;) env tr -&gt;
-    exists trs0,
-      Forall2 (fun z tri =&gt; par_trace body (z :: env) tri) vals trs0 /\
-      Forall2 point_sema_equiv tr (concat trs0).
-Proof.
-  induction vals as [|z vals IH];
-    intros body body&#x27; env tr Hbody Hsafe Hsafe_values Htraces.
-  - simpl in Htraces. inversion Htraces; subst.
-    exists (nil : list (list InstrPoint)). split; constructor.
-  - simpl in Hsafe_values.
-    destruct Hsafe_values as [Hsafe_head Hsafe_tail].
-    simpl in Htraces.
-    inversion Htraces as
-        [|env0 st0 sts0 tr1 tr2 Htrace_head Htrace_tail]; subst.
-    pose proof
-      (subst_trace_safe_stmt_inv
-         body&#x27; 0 (BaseLoop.Constant z) Hsafe_head)
-      as Hsafe_body&#x27;.
-    destruct
-      (subst_par_trace_refine
-         body&#x27; [] env (BaseLoop.Constant z) tr1
-         Hsafe_body&#x27; Hsafe_head Htrace_head)
-      as [tr1&#x27; [Htrace1&#x27; Hrel_subst]].
-    simpl in Htrace1&#x27;.
-    destruct
-      (Hbody (z :: env) tr1&#x27; Hsafe Hsafe_body&#x27; Htrace1&#x27;)
-      as [tr1&#x27;&#x27; [Htrace1&#x27;&#x27; Hrel_body]].
-    destruct
-      (IH body body&#x27; env tr2 Hbody Hsafe Hsafe_tail Htrace_tail)
-      as [trs0 [Htraces0 Hrel_tail]].
-    exists (tr1&#x27;&#x27; :: trs0). split.
-    + constructor; assumption.
-    + simpl.
-      apply Forall2_app.
-      * eapply Forall2_point_sema_equiv_trans; eauto.
-      * exact Hrel_tail.
-Qed.
-
-Definition const_unroll_trace_stmt_goal (s : stmt) : Prop :=
-  forall env tr,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (const_unroll_stmt s) -&gt;
-    par_trace (const_unroll_stmt s) env tr -&gt;
-    exists tr0,
-      par_trace s env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-
-Definition const_unroll_trace_stmts_goal (ss : stmt_list) : Prop :=
-  forall env tr,
-    trace_safe_stmts ss -&gt;
-    trace_safe_stmts (const_unroll_stmts ss) -&gt;
-    par_traces (const_unroll_stmts ss) env tr -&gt;
-    exists tr0,
-      par_traces ss env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-
-Lemma const_unroll_par_trace_refine_mutual :
-  (forall s, const_unroll_trace_stmt_goal s) /\
-  (forall ss, const_unroll_trace_stmts_goal ss).
-Proof.
-  apply p_stmt_stmts_mutind;
-    unfold const_unroll_trace_stmt_goal, const_unroll_trace_stmts_goal.
-  (** Loop case: constant [SeqMode] becomes an explicit ordered statement
-      list.  Every other sequential loop, and every parallel/vector loop,
-      retains its constructor and recursively reflects its iteration traces. *)
-  - intros mode od lb ub body IH env tr Hsafe Hsafe_unroll Htrace.
-    simpl in Hsafe.
-    destruct mode.
-    + simpl in Hsafe_unroll, Htrace.
-      destruct (constant_bounds lb ub) as [[l u]|] eqn:Hbounds.
-      * destruct (constant_bounds_some _ _ _ _ Hbounds) as [Hlb Hub].
-        subst lb ub.
-        inversion Htrace as [|env0 sts0 tr0 Htraces| | | | |]; subst.
-        destruct
-          (const_unroll_values_par_traces_refine
-             (Zrange l u) body (const_unroll_stmt body) env tr
-             IH Hsafe Hsafe_unroll Htraces)
-          as [trs0 [Htraces0 Hrel]].
-        exists (concat trs0). split.
-        -- eapply PTLoopSeq with (zs := Zrange l u) (trs := trs0).
-           ++ reflexivity.
-           ++ exact Htraces0.
-           ++ reflexivity.
-        -- exact Hrel.
-      * inversion Htrace as
-            [| | | |
-             od0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-               Hrange Htraces Hconcat
-             | |]; subst.
-        destruct
-          (par_trace_families_refine
-             (const_unroll_stmt body) body
-             (fun z =&gt; z :: env) (fun z =&gt; z :: env)
-             _ _ (fun z tri Hz =&gt; IH (z :: env) tri Hsafe Hsafe_unroll Hz)
-             Htraces)
-          as [trs0 [Htraces0 Hrels]].
-        exists (concat trs0). split.
-        -- eapply PTLoopSeq with
-              (zs := Zrange
-                (BaseLoop.eval_expr env lb)
-                (BaseLoop.eval_expr env ub))
-              (trs := trs0); eauto.
-        -- eapply Forall2_concat_point_sema_equiv. exact Hrels.
-    + simpl in Hsafe_unroll, Htrace.
-      inversion Htrace as
-          [| | | | | |
-           d0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-             Hrange Htraces Hinter]; subst.
-      destruct
-        (par_trace_families_refine
-           (const_unroll_stmt body) body
-           (fun z =&gt; z :: env) (fun z =&gt; z :: env)
-           _ _ (fun z tri Hz =&gt; IH (z :: env) tri Hsafe Hsafe_unroll Hz)
-           Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      destruct (interleave_family_point_equiv _ _ _ Hinter Hrels)
-        as [tr0 [Hinter0 Hrel0]].
-      exists tr0. split.
-      * eapply PTLoopPar with
-            (zs := Zrange
-              (BaseLoop.eval_expr env lb)
-              (BaseLoop.eval_expr env ub))
-            (trs := trs0); eauto.
-      * exact Hrel0.
-    + simpl in Hsafe_unroll, Htrace.
-      inversion Htrace as
-          [| | | | |
-           od0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-             Hrange Htraces Hconcat
-           |]; subst.
-      destruct
-        (par_trace_families_refine
-           (const_unroll_stmt body) body
-           (fun z =&gt; z :: env) (fun z =&gt; z :: env)
-           _ _ (fun z tri Hz =&gt; IH (z :: env) tri Hsafe Hsafe_unroll Hz)
-           Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      exists (concat trs0). split.
-      * eapply PTLoopVec with
-            (zs := Zrange
-              (BaseLoop.eval_expr env lb)
-              (BaseLoop.eval_expr env ub))
-            (trs := trs0); eauto.
-      * eapply Forall2_concat_point_sema_equiv. exact Hrels.
-  - intros i es env tr Hsafe Hsafe_unroll Htrace.
-    simpl in Htrace. exists tr. split; [exact Htrace|].
-    clear Htrace Hsafe Hsafe_unroll.
-    induction tr as [|ip tr IHtr].
-    + constructor.
-    + constructor; [apply point_sema_equiv_refl|exact IHtr].
-  - intros ss IH env tr Hsafe Hsafe_unroll Htrace.
-    simpl in Hsafe, Hsafe_unroll, Htrace.
-    inversion Htrace as [|env0 sts0 tr0 Htraces| | | | |]; subst.
-    destruct (IH env tr Hsafe Hsafe_unroll Htraces) as [tr0 [Ht Hr]].
-    exists tr0. split; [constructor; exact Ht|exact Hr].
-  - intros tst body IH env tr Hsafe Hsafe_unroll Htrace.
-    simpl in Hsafe, Hsafe_unroll, Htrace.
-    inversion Htrace as
-        [| |
-         env0 tst0 body0 tr0 Htest Hbody
-         | env0 tst0 body0 Htest
-         | | |]; subst.
-    + destruct (IH env tr Hsafe Hsafe_unroll Hbody) as [tr0 [Ht Hr]].
-      exists tr0. split.
-      * eapply PTGuardTrue; [exact Htest|exact Ht].
-      * exact Hr.
-    + exists (nil : list InstrPoint). split.
-      * eapply PTGuardFalse. exact Htest.
-      * constructor.
-  - intros env tr Hsafe Hsafe_unroll Htrace.
-    inversion Htrace; subst.
-    exists (nil : list InstrPoint). split; constructor.
-  - intros s IHs ss IHss env tr Hsafe Hsafe_unroll Htrace.
-    simpl in Hsafe, Hsafe_unroll.
-    destruct Hsafe as [Hsafe_s Hsafe_ss].
-    destruct Hsafe_unroll as [Hsafe_unroll_s Hsafe_unroll_ss].
-    inversion Htrace as
-        [|env0 st0 sts0 tr1 tr2 Htr1 Htr2]; subst.
-    destruct (IHs env tr1 Hsafe_s Hsafe_unroll_s Htr1)
-      as [tr1&#x27; [Ht1 Hr1]].
-    destruct (IHss env tr2 Hsafe_ss Hsafe_unroll_ss Htr2)
-      as [tr2&#x27; [Ht2 Hr2]].
-    exists (tr1&#x27; ++ tr2&#x27;). split.
-    + econstructor; eauto.
-    + apply Forall2_app; assumption.
-Qed.
-
-Lemma const_unroll_par_trace_refine :
-  forall s env tr,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (const_unroll_stmt s) -&gt;
-    par_trace (const_unroll_stmt s) env tr -&gt;
-    exists tr0,
-      par_trace s env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-Proof.
-  exact (proj1 const_unroll_par_trace_refine_mutual).
-Qed.
-
-Lemma const_unroll_loop_semantics_refine :
-  forall s env mem1 mem2,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (const_unroll_stmt s) -&gt;
-    loop_semantics (const_unroll_stmt s) env mem1 mem2 -&gt;
-    loop_semantics s env mem1 mem2.
-Proof.
-  intros s env mem1 mem2 Hsafe Hsafe_unroll [tr [Htrace Hsem]].
-  destruct
-    (const_unroll_par_trace_refine s env tr Hsafe Hsafe_unroll Htrace)
-    as [tr0 [Htrace0 Hrel]].
-  exists tr0. split; [exact Htrace0|].
-  eapply instr_point_list_semantics_equiv; eauto.
-Qed.
-
-Theorem const_unroll_semantics_refine :
-  forall p mem1 mem2,
-    trace_safe p -&gt;
-    trace_safe (const_unroll p) -&gt;
-    semantics (const_unroll p) mem1 mem2 -&gt;
-    semantics p mem1 mem2.
-Proof.
-  intros [[s ctxt] vars] mem1 mem2 Hsafe Hsafe_unroll Hsem.
-  inversion Hsem as
-      [loop_ext loop ctxt&#x27; vars&#x27; env mem1&#x27; mem2&#x27;
-       Heq Hcompat Hna Hinit Hloop]; subst.
-  inversion Heq; subst.
-  econstructor.
-  - reflexivity.
-  - exact Hcompat.
-  - exact Hna.
-  - exact Hinit.
-  - eapply const_unroll_loop_semantics_refine; eauto.
-Qed.
-
-Definition cleanup_trace_stmt_goal (s : stmt) : Prop :=
-  forall env tr,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (singleton_elim_stmt s) -&gt;
-    par_trace (singleton_elim_stmt s) env tr -&gt;
-    exists tr0,
-      par_trace s env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-
-Definition cleanup_trace_stmts_goal (ss : stmt_list) : Prop :=
-  forall env tr,
-    trace_safe_stmts ss -&gt;
-    trace_safe_stmts (singleton_elim_stmts ss) -&gt;
-    par_traces (singleton_elim_stmts ss) env tr -&gt;
-    exists tr0,
-      par_traces ss env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-
-Lemma cleanup_par_trace_refine_mutual :
-  (forall s, cleanup_trace_stmt_goal s) /\
-  (forall ss, cleanup_trace_stmts_goal ss).
-Proof.
-  apply p_stmt_stmts_mutind;
-    unfold cleanup_trace_stmt_goal, cleanup_trace_stmts_goal.
-  - intros mode od lb ub body IH env tr Hsafe Hsafe_clean Htrace.
-    simpl in Hsafe.
-    destruct mode.
-    + simpl in Hsafe_clean, Htrace.
-      destruct (expr_eqb ub
-        (BaseLoop.make_sum lb (BaseLoop.Constant 1))) eqn:Hsingle.
-      * pose proof
-          (subst_trace_safe_stmt_inv
-            (singleton_elim_stmt body) 0 lb Hsafe_clean)
-          as Hsafe_body_clean.
-        destruct
-          (subst_par_trace_refine
-            (singleton_elim_stmt body) [] env lb tr
-            Hsafe_body_clean Hsafe_clean Htrace)
-          as [tr_clean [Htrace_clean Hrel_clean]].
-        simpl in Htrace_clean.
-        destruct
-          (IH (BaseLoop.eval_expr env lb :: env) tr_clean
-            Hsafe Hsafe_body_clean Htrace_clean)
-          as [tr_body [Htrace_body Hrel_body]].
-        exists tr_body. split.
-        -- eapply PTLoopSeq with
-              (zs := [BaseLoop.eval_expr env lb])
-              (trs := [tr_body]).
-           ++ rewrite
-                (expr_eqb_correct ub
-                  (BaseLoop.make_sum lb (BaseLoop.Constant 1))
-                  Hsingle env).
-              rewrite BaseLoop.make_sum_correct. simpl.
-              rewrite Zrange_single. reflexivity.
-           ++ constructor; [exact Htrace_body|constructor].
-           ++ simpl. rewrite app_nil_r. reflexivity.
-        -- eapply Forall2_point_sema_equiv_trans; eauto.
-      * inversion Htrace as
-            [| | | |
-             od0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-               Hrange Htraces Hconcat
-             | |]; subst.
-        destruct
-          (par_trace_families_refine
-            (singleton_elim_stmt body) body
-            (fun z =&gt; z :: env) (fun z =&gt; z :: env)
-            _ _ (fun z tri Hz =&gt; IH (z :: env) tri Hsafe Hsafe_clean Hz)
-            Htraces)
-          as [trs0 [Htraces0 Hrels]].
-        exists (concat trs0). split.
-        -- eapply PTLoopSeq with
-              (zs := Zrange
-                (BaseLoop.eval_expr env lb)
-                (BaseLoop.eval_expr env ub))
-              (trs := trs0); eauto.
-        -- eapply Forall2_concat_point_sema_equiv. exact Hrels.
-    + simpl in Hsafe_clean, Htrace.
-      inversion Htrace as
-          [| | | | | |
-           d0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-             Hrange Htraces Hinter]; subst.
-      destruct
-        (par_trace_families_refine
-          (singleton_elim_stmt body) body
-          (fun z =&gt; z :: env) (fun z =&gt; z :: env)
-          _ _ (fun z tri Hz =&gt; IH (z :: env) tri Hsafe Hsafe_clean Hz)
-          Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      destruct (interleave_family_point_equiv _ _ _ Hinter Hrels)
-        as [tr0 [Hinter0 Hrel0]].
-      exists tr0. split.
-      * eapply PTLoopPar with
-            (zs := Zrange
-              (BaseLoop.eval_expr env lb)
-              (BaseLoop.eval_expr env ub))
-            (trs := trs0); eauto.
-      * exact Hrel0.
-    + simpl in Hsafe_clean, Htrace.
-      inversion Htrace as
-          [| | | | |
-           od0 lb0 ub0 body0 env0 zs trs&#x27; tr&#x27;
-             Hrange Htraces Hconcat
-           |]; subst.
-      destruct
-        (par_trace_families_refine
-          (singleton_elim_stmt body) body
-          (fun z =&gt; z :: env) (fun z =&gt; z :: env)
-          _ _ (fun z tri Hz =&gt; IH (z :: env) tri Hsafe Hsafe_clean Hz)
-          Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      exists (concat trs0). split.
-      * eapply PTLoopVec with
-            (zs := Zrange
-              (BaseLoop.eval_expr env lb)
-              (BaseLoop.eval_expr env ub))
-            (trs := trs0); eauto.
-      * eapply Forall2_concat_point_sema_equiv. exact Hrels.
-  - intros i es env tr Hsafe Hsafe_clean Htrace.
-    simpl in Htrace. exists tr. split; [exact Htrace|].
-    clear Htrace Hsafe Hsafe_clean.
-    induction tr as [|ip tr IHtr].
-    + constructor.
-    + constructor; [apply point_sema_equiv_refl|exact IHtr].
-  - intros ss IH env tr Hsafe Hsafe_clean Htrace.
-    simpl in Hsafe, Hsafe_clean, Htrace.
-    inversion Htrace as [|env0 sts0 tr0 Htrs| | | | |]; subst.
-    destruct (IH env tr Hsafe Hsafe_clean Htrs) as [tr0 [Ht Hr]].
-    exists tr0. split; [constructor; exact Ht|exact Hr].
-  - intros tst body IH env tr Hsafe Hsafe_clean Htrace.
-    simpl in Hsafe, Hsafe_clean, Htrace.
-    inversion Htrace as
-        [| |
-         env0 tst0 body0 tr0 Htest Hbody
-         | env0 tst0 body0 Htest
-         | | |]; subst.
-    + destruct (IH env tr Hsafe Hsafe_clean Hbody) as [tr0 [Ht Hr]].
-      exists tr0. split.
-      * eapply PTGuardTrue; [exact Htest|exact Ht].
-      * exact Hr.
-    + exists (nil : list InstrPoint). split.
-      * eapply PTGuardFalse. exact Htest.
-      * constructor.
-  - intros env tr Hsafe Hsafe_clean Htrace.
-    inversion Htrace; subst.
-    exists (nil : list InstrPoint). split; constructor.
-  - intros s IHs ss IHss env tr Hsafe Hsafe_clean Htrace.
-    simpl in Hsafe, Hsafe_clean.
-    destruct Hsafe as [Hsafe_s Hsafe_ss].
-    destruct Hsafe_clean as [Hsafe_clean_s Hsafe_clean_ss].
-    inversion Htrace as
-        [|env0 st0 sts0 tr1 tr2 Htr1 Htr2]; subst.
-    destruct (IHs env tr1 Hsafe_s Hsafe_clean_s Htr1)
-      as [tr1&#x27; [Ht1 Hr1]].
-    destruct (IHss env tr2 Hsafe_ss Hsafe_clean_ss Htr2)
-      as [tr2&#x27; [Ht2 Hr2]].
-    exists (tr1&#x27; ++ tr2&#x27;). split.
-    + econstructor; eauto.
-    + apply Forall2_app; assumption.
-Qed.
-
-Lemma cleanup_par_trace_refine :
-  forall s env tr,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (singleton_elim_stmt s) -&gt;
-    par_trace (singleton_elim_stmt s) env tr -&gt;
-    exists tr0,
-      par_trace s env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-Proof.
-  exact (proj1 cleanup_par_trace_refine_mutual).
-Qed.
-
-Lemma cleanup_loop_semantics_refine :
-  forall s env mem1 mem2,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (singleton_elim_stmt s) -&gt;
-    loop_semantics (singleton_elim_stmt s) env mem1 mem2 -&gt;
-    loop_semantics s env mem1 mem2.
-Proof.
-  intros s env mem1 mem2 Hsafe Hsafe_clean [tr [Htrace Hsem]].
-  destruct
-    (cleanup_par_trace_refine s env tr Hsafe Hsafe_clean Htrace)
-    as [tr0 [Htrace0 Hrel]].
-  exists tr0. split; [exact Htrace0|].
-  eapply instr_point_list_semantics_equiv; eauto.
-Qed.
-
-Theorem cleanup_semantics_refine :
-  forall p mem1 mem2,
-    trace_safe p -&gt;
-    trace_safe (cleanup p) -&gt;
-    semantics (cleanup p) mem1 mem2 -&gt;
-    semantics p mem1 mem2.
-Proof.
-  intros [[s ctxt] vars] mem1 mem2 Hsafe Hsafe_clean Hsem.
-  inversion Hsem as
-      [loop_ext loop ctxt&#x27; vars&#x27; env mem1&#x27; mem2&#x27;
-       Heq Hcompat Hna Hinit Hloop]; subst.
-  inversion Heq; subst.
-  econstructor.
-  - reflexivity.
-  - exact Hcompat.
-  - exact Hna.
-  - exact Hinit.
-  - eapply cleanup_loop_semantics_refine; eauto.
-Qed.
-
-(** This is the bridge needed by the checked pipeline: once the pre-clean
-    annotated execution has its certificate-derived ordered proof, the cleaned
-    execution inherits the existing erased-program refinement theorem. *)
-Theorem cleanup_certified_refines_erased :
-  forall p mem1 mem2,
-    trace_safe p -&gt;
-    trace_safe (cleanup p) -&gt;
-    (semantics p mem1 mem2 -&gt;
-      ordered_semantics p mem1 mem2) -&gt;
-    semantics (cleanup p) mem1 mem2 -&gt;
-    exists mem2&#x27;,
-      BaseLoop.semantics (erase_parallel p) mem1 mem2&#x27; /\
-      Instr.State.eq mem2 mem2&#x27;.
-Proof.
-  intros p mem1 mem2 Hsafe Hsafe_clean Hcert Hclean.
-  apply semantics_refines_erased; [exact Hsafe|].
-  apply Hcert.
-  eapply cleanup_semantics_refine; eauto.
-Qed.
-
-(** Full metadata-preserving cleanup.  This mirrors the ordinary loop cleanup
-    pipeline while retaining the execution mode and origin of every surviving
-    loop.  Only sequential singleton loops are eliminated. *)
-Fixpoint collect_sum_norm (e : BaseLoop.expr) : list BaseLoop.expr * Z :=
-  match e with
-  | BaseLoop.Constant c =&gt; ([], c)
-  | BaseLoop.Sum e1 e2 =&gt;
-      let &#x27;(ts1, c1) := collect_sum_norm e1 in
-      let &#x27;(ts2, c2) := collect_sum_norm e2 in
-      (ts1 ++ ts2, c1 + c2)
-  | _ =&gt; ([e], 0)
-  end.
-
-Definition build_sum (terms : list BaseLoop.expr) (c : Z) : BaseLoop.expr :=
-  fold_right BaseLoop.make_sum (BaseLoop.Constant c) terms.
-
-Definition normalize_le (e1 e2 : BaseLoop.expr) : BaseLoop.test :=
-  match e1, e2 with
-  | BaseLoop.Mult k e, BaseLoop.Constant c =&gt;
-      if Z.eqb k (-1)
-      then BaseLoop.make_le (BaseLoop.Constant (- c)) e
-      else BaseLoop.make_le e1 e2
-  | BaseLoop.Constant c, BaseLoop.Mult k e =&gt;
-      if Z.eqb k (-1)
-      then BaseLoop.make_le e (BaseLoop.Constant (- c))
-      else BaseLoop.make_le e1 e2
-  | _, _ =&gt; BaseLoop.make_le e1 e2
-  end.
-
-Fixpoint simpl_expr (e : BaseLoop.expr) : BaseLoop.expr :=
-  match e with
-  | BaseLoop.Constant c =&gt; BaseLoop.Constant c
-  | BaseLoop.Sum e1 e2 =&gt;
-      let e1&#x27; := simpl_expr e1 in
-      let e2&#x27; := simpl_expr e2 in
-      let &#x27;(terms, c) := collect_sum_norm (BaseLoop.Sum e1&#x27; e2&#x27;) in
-      build_sum terms c
-  | BaseLoop.Mult k e1 =&gt; BaseLoop.make_mult k (simpl_expr e1)
-  | BaseLoop.Div e1 k =&gt; BaseLoop.make_div (simpl_expr e1) k
-  | BaseLoop.Mod e1 k =&gt; BaseLoop.make_mod (simpl_expr e1) k
-  | BaseLoop.Var n =&gt; BaseLoop.Var n
-  | BaseLoop.Max e1 e2 =&gt; BaseLoop.make_max (simpl_expr e1) (simpl_expr e2)
-  | BaseLoop.Min e1 e2 =&gt; BaseLoop.make_min (simpl_expr e1) (simpl_expr e2)
-  end.
-
-Fixpoint simpl_test (t : BaseLoop.test) : BaseLoop.test :=
-  match t with
-  | BaseLoop.LE e1 e2 =&gt; normalize_le (simpl_expr e1) (simpl_expr e2)
-  | BaseLoop.EQ e1 e2 =&gt; BaseLoop.make_eq (simpl_expr e1) (simpl_expr e2)
-  | BaseLoop.And t1 t2 =&gt; BaseLoop.make_and (simpl_test t1) (simpl_test t2)
-  | BaseLoop.Or t1 t2 =&gt; BaseLoop.make_or (simpl_test t1) (simpl_test t2)
-  | BaseLoop.Not t1 =&gt; BaseLoop.make_not (simpl_test t1)
-  | BaseLoop.TConstantTest b =&gt; BaseLoop.TConstantTest b
-  end.
-
-Fixpoint zsum (zs : list Z) : Z :=
-  match zs with
-  | [] =&gt; 0
-  | z :: zs&#x27; =&gt; z + zsum zs&#x27;
-  end.
-
-Local Lemma build_sum_correct :
-  forall env terms c,
-    BaseLoop.eval_expr env (build_sum terms c) =
-    zsum (map (BaseLoop.eval_expr env) terms) + c.
-Proof.
-  intros env terms c.
-  induction terms as [|t ts IH]; simpl.
-  - reflexivity.
-  - rewrite BaseLoop.make_sum_correct, IH. lia.
-Qed.
-
-Local Lemma zsum_app :
-  forall zs1 zs2,
-    zsum (zs1 ++ zs2) = zsum zs1 + zsum zs2.
-Proof.
-  induction zs1; intros; simpl; [lia|]. rewrite IHzs1. lia.
-Qed.
-
-Local Lemma collect_sum_norm_correct :
-  forall env e terms c,
-    collect_sum_norm e = (terms, c) -&gt;
-    zsum (map (BaseLoop.eval_expr env) terms) + c =
-    BaseLoop.eval_expr env e.
-Proof.
-  induction e; intros terms c Hcol; simpl in Hcol.
-  - inversion Hcol; subst. reflexivity.
-  - destruct (collect_sum_norm e1) as [ts1 c1] eqn:H1.
-    destruct (collect_sum_norm e2) as [ts2 c2] eqn:H2.
-    inversion Hcol; subst; clear Hcol.
-    rewrite map_app, zsum_app.
-    specialize (IHe1 ts1 c1 eq_refl).
-    specialize (IHe2 ts2 c2 eq_refl).
-    replace (zsum (map (BaseLoop.eval_expr env) ts1) +
-             (zsum (map (BaseLoop.eval_expr env) ts2) + (c1 + c2)))
-      with ((zsum (map (BaseLoop.eval_expr env) ts1) + c1) +
-            (zsum (map (BaseLoop.eval_expr env) ts2) + c2)) by lia.
-    assert (Hz1 :
-      zsum (map (BaseLoop.eval_expr env) ts1) =
-      BaseLoop.eval_expr env e1 - c1) by lia.
-    assert (Hz2 :
-      zsum (map (BaseLoop.eval_expr env) ts2) =
-      BaseLoop.eval_expr env e2 - c2) by lia.
-    rewrite Hz1, Hz2. simpl. lia.
-  - inversion Hcol; subst; simpl; lia.
-  - inversion Hcol; subst; simpl; lia.
-  - inversion Hcol; subst; simpl; lia.
-  - inversion Hcol; subst; simpl; lia.
-  - inversion Hcol; subst; simpl; lia.
-  - inversion Hcol; subst; simpl; lia.
-Qed.
-
-Local Lemma opp_leb_mult_m1 :
-  forall x c, (- c &lt;=? x) = (((-1) * x) &lt;=? c).
-Proof.
-  intros x c.
-  destruct (Z.leb_spec0 (-c) x);
-    destruct (Z.leb_spec0 ((-1) * x) c); simpl; lia.
-Qed.
-
-Local Lemma leb_neg_rhs_mult_m1 :
-  forall x c, (x &lt;=? - c) = (c &lt;=? ((-1) * x)).
-Proof.
-  intros x c.
-  destruct (Z.leb_spec0 x (-c));
-    destruct (Z.leb_spec0 c ((-1) * x)); simpl; lia.
-Qed.
-
-Local Lemma normalize_le_correct :
-  forall env e1 e2,
-    BaseLoop.eval_test env (normalize_le e1 e2) =
-    BaseLoop.eval_test env (BaseLoop.LE e1 e2).
-Proof.
-  intros env e1 e2.
-  unfold normalize_le.
-  destruct e1 as
-    [c1|a1 b1|kleft eleft|dleft kdleft|mleft kmleft|n1|
-     max1l max1r|min1l min1r].
-  - destruct e2 as
-      [c2|a2 b2|kright eright|dright kdright|mright kmright|n2|
-       max2l max2r|min2l min2r]; simpl; try reflexivity.
-    destruct (Z.eqb kright (-1)) eqn:Heq.
-    + apply Z.eqb_eq in Heq. subst.
-      destruct eright; simpl; rewrite leb_neg_rhs_mult_m1; reflexivity.
-    + unfold BaseLoop.make_le. simpl. reflexivity.
-  - destruct e2; simpl; reflexivity.
-  - destruct e2 as
-      [c2|a2 b2|kright eright|dright kdright|mright kmright|n2|
-       max2l max2r|min2l min2r]; simpl; try reflexivity.
-    destruct (Z.eqb kleft (-1)) eqn:Heq.
-    + apply Z.eqb_eq in Heq. subst.
-      destruct eleft; simpl; rewrite opp_leb_mult_m1; reflexivity.
-    + unfold BaseLoop.make_le. simpl. reflexivity.
-  - destruct e2; simpl; reflexivity.
-  - destruct e2; simpl; reflexivity.
-  - destruct e2; simpl; reflexivity.
-  - destruct e2; simpl; reflexivity.
-  - destruct e2; simpl; reflexivity.
-Qed.
-
-Local Lemma simpl_expr_correct :
+Lemma succ_expr_correct :
   forall env e,
-    BaseLoop.eval_expr env (simpl_expr e) = BaseLoop.eval_expr env e.
+    Loop.eval_expr env (succ_expr e) = Loop.eval_expr env e + 1.
 Proof.
-  induction e; simpl; intros; try reflexivity.
-  - destruct (collect_sum_norm (BaseLoop.Sum (simpl_expr e1) (simpl_expr e2)))
-      as [terms c] eqn:Hsc.
-    change
-      (BaseLoop.eval_expr env
-        (let &#x27;(terms0, c0) :=
-          collect_sum_norm (BaseLoop.Sum (simpl_expr e1) (simpl_expr e2))
-         in build_sum terms0 c0) =
-       BaseLoop.eval_expr env (BaseLoop.Sum e1 e2)).
-    rewrite Hsc. simpl.
-    pose proof
-      (collect_sum_norm_correct env
-        (BaseLoop.Sum (simpl_expr e1) (simpl_expr e2)) terms c Hsc)
-      as Hnorm.
-    simpl in Hnorm. rewrite IHe1, IHe2 in Hnorm.
-    etransitivity; [apply build_sum_correct|exact Hnorm].
-  - rewrite BaseLoop.make_mult_correct, IHe. reflexivity.
-  - rewrite BaseLoop.make_div_correct, IHe. reflexivity.
-  - rewrite BaseLoop.make_mod_correct, IHe. reflexivity.
-  - rewrite BaseLoop.make_max_correct, IHe1, IHe2. reflexivity.
-  - rewrite BaseLoop.make_min_correct, IHe1, IHe2. reflexivity.
+  intros env e. apply add_const_expr_correct.
 Qed.
 
-Local Lemma simpl_expr_list_correct :
-  forall env es,
-    map (BaseLoop.eval_expr env) (map simpl_expr es) =
-    map (BaseLoop.eval_expr env) es.
+Lemma pred_expr_correct :
+  forall env e,
+    Loop.eval_expr env (pred_expr e) = Loop.eval_expr env e - 1.
 Proof.
-  intros env es. rewrite map_map. apply map_ext. apply simpl_expr_correct.
+  intros env e. unfold pred_expr. rewrite add_const_expr_correct. lia.
 Qed.
 
-Local Lemma simpl_test_correct :
-  forall env t,
-    BaseLoop.eval_test env (simpl_test t) = BaseLoop.eval_test env t.
+Lemma iter_semantics_app :
+  forall (A: Type) (P: A -&gt; State.t -&gt; State.t -&gt; Prop) xs ys mem1 mem2 mem3,
+    Instr.IterSem.iter_semantics P xs mem1 mem2 -&gt;
+    Instr.IterSem.iter_semantics P ys mem2 mem3 -&gt;
+    Instr.IterSem.iter_semantics P (xs ++ ys) mem1 mem3.
 Proof.
-  intros env tst. unfold test in tst.
-  induction tst; simpl; try reflexivity.
-  - rewrite normalize_le_correct. simpl. rewrite !simpl_expr_correct. reflexivity.
-  - rewrite BaseLoop.make_eq_correct. simpl. rewrite !simpl_expr_correct. reflexivity.
-  - rewrite BaseLoop.make_and_correct, IHtst1, IHtst2. reflexivity.
-  - rewrite BaseLoop.make_or_correct, IHtst1, IHtst2. reflexivity.
-  - rewrite BaseLoop.make_not_correct, IHtst. reflexivity.
+  intros A P xs ys mem1 mem2 mem3 Hxs Hys.
+  induction Hxs.
+  - simpl. exact Hys.
+  - simpl. econstructor; eauto.
 Qed.
 
-Definition make_stmt_from_list (ss : stmt_list) : stmt :=
-  match ss with
-  | SNil =&gt; Seq SNil
-  | SCons s SNil =&gt; s
-  | _ =&gt; Seq ss
+Lemma iter_semantics_app_inv :
+  forall (A: Type) (P: A -&gt; State.t -&gt; State.t -&gt; Prop) xs ys mem1 mem3,
+    Instr.IterSem.iter_semantics P (xs ++ ys) mem1 mem3 -&gt;
+    exists mem2,
+      Instr.IterSem.iter_semantics P xs mem1 mem2 /\
+      Instr.IterSem.iter_semantics P ys mem2 mem3.
+Proof.
+  induction xs as [|x xs IH]; intros ys mem1 mem3 Hsem; simpl in Hsem.
+  - exists mem1. split; [constructor|exact Hsem].
+  - inversion_clear Hsem.
+    apply IH in H0 as [mem2 [Hxs Hys]].
+    exists mem2. split; [econstructor; eauto|exact Hys].
+Qed.
+
+Lemma iter_semantics_single_inv :
+  forall (A: Type) (P: A -&gt; State.t -&gt; State.t -&gt; Prop) x mem1 mem2,
+    Instr.IterSem.iter_semantics P [x] mem1 mem2 -&gt;
+    P x mem1 mem2.
+Proof.
+  intros A P x mem1 mem2 Hsem.
+  inversion_clear Hsem.
+  inversion H0; subst; clear H0.
+  exact H.
+Qed.
+
+Lemma iter_semantics_concat_map :
+  forall (A B: Type) (P: B -&gt; State.t -&gt; State.t -&gt; Prop)
+    (f: A -&gt; list B) xs mem1 mem2,
+    Instr.IterSem.iter_semantics
+      (fun x =&gt; Instr.IterSem.iter_semantics P (f x))
+      xs mem1 mem2 &lt;-&gt;
+    Instr.IterSem.iter_semantics P (concat (map f xs)) mem1 mem2.
+Proof.
+  induction xs as [|x xs IH]; intros mem1 mem2; simpl.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem.
+    + inversion_clear Hsem.
+      eapply iter_semantics_app; eauto.
+      apply IH. exact H0.
+    + apply iter_semantics_app_inv in Hsem as [mem_mid [Hhead Htail]].
+      econstructor.
+      * exact Hhead.
+      * apply IH. exact Htail.
+Qed.
+
+Lemma Zrange_app :
+  forall lb mid ub,
+    lb &lt;= mid -&gt;
+    mid &lt;= ub -&gt;
+    Zrange lb ub = Zrange lb mid ++ Zrange mid ub.
+Proof.
+  intros lb mid ub Hlbmid Hmidub.
+  assert (Hmid: exists n, mid = lb + Z.of_nat n).
+  {
+    exists (Z.to_nat (mid - lb)).
+    rewrite Z2Nat.id by lia. lia.
+  }
+  clear Hlbmid.
+  destruct Hmid as [n Hmid]. subst mid.
+  revert lb ub Hmidub.
+  induction n as [|n IH]; intros lb ub Hmidub.
+  - replace (lb + Z.of_nat 0) with lb in * by lia.
+    rewrite (Zrange_empty lb lb) by lia.
+    reflexivity.
+  - replace (lb + Z.of_nat (S n)) with (lb + 1 + Z.of_nat n) in * by lia.
+    rewrite Zrange_begin by lia.
+    rewrite (Zrange_begin lb (lb + 1 + Z.of_nat n)) by lia.
+    simpl. f_equal.
+    apply IH. lia.
+Qed.
+
+Lemma Zrange_0_nat :
+  forall n,
+    Zrange 0 (Z.of_nat n) = map Z.of_nat (n_range n).
+Proof.
+  intro n.
+  unfold Zrange.
+  replace (Z.to_nat (Z.of_nat n - 0)) with n by lia.
+  apply map_ext. intro x. lia.
+Qed.
+
+Fixpoint block_value_ranges
+    (fuel factor: nat) (lb: Z) (js: list Z) : list Z :=
+  match js with
+  | nil =&gt; nil
+  | j :: js&#x27; =&gt;
+      Zrange
+        (lb + Z.of_nat factor * j)
+        (lb + Z.of_nat factor * j + Z.of_nat fuel) ++
+      block_value_ranges fuel factor lb js&#x27;
   end.
 
-Fixpoint simplify_stmt (s : stmt) : stmt :=
-  match s with
-  | Loop mode od lb ub body =&gt;
-      Loop mode od
-        (simpl_expr lb)
-        (simpl_expr ub)
-        (simplify_stmt body)
-  | Instr i es =&gt;
-      Instr i (map simpl_expr es)
-  | Seq ss =&gt; Seq (simplify_stmts ss)
-  | Guard tst body =&gt;
-      Guard (simpl_test tst) (simplify_stmt body)
+Lemma block_value_ranges_app :
+  forall fuel factor lb xs ys,
+    block_value_ranges fuel factor lb (xs ++ ys) =
+    block_value_ranges fuel factor lb xs ++
+    block_value_ranges fuel factor lb ys.
+Proof.
+  induction xs as [|x xs IH]; intros ys; simpl.
+  - reflexivity.
+  - rewrite IH, app_assoc. reflexivity.
+Qed.
+
+Lemma block_value_ranges_concat :
+  forall fuel factor lb js,
+    block_value_ranges fuel factor lb js =
+    concat
+      (map
+        (fun j =&gt;
+          Zrange
+            (lb + Z.of_nat factor * j)
+            (lb + Z.of_nat factor * j + Z.of_nat fuel))
+        js).
+Proof.
+  induction js as [|j js IH]; simpl.
+  - reflexivity.
+  - rewrite IH. reflexivity.
+Qed.
+
+Lemma block_value_ranges_range_nat :
+  forall factor lb n,
+    (0 &lt; factor)%nat -&gt;
+    block_value_ranges factor factor lb (map Z.of_nat (n_range n)) =
+    Zrange lb (lb + Z.of_nat factor * Z.of_nat n).
+Proof.
+  induction n as [|n IH]; intros Hfactor.
+  - simpl.
+    replace (lb + Z.of_nat factor * Z.of_nat 0) with lb by lia.
+    rewrite Zrange_empty by lia. reflexivity.
+  - simpl n_range.
+    rewrite map_app.
+    rewrite block_value_ranges_app.
+    rewrite IH by exact Hfactor.
+    simpl.
+    rewrite app_nil_r.
+    replace (lb + Z.of_nat factor * Z.of_nat n + Z.of_nat factor)
+      with (lb + Z.of_nat factor * Z.of_nat (S n)) by lia.
+    symmetry. apply Zrange_app; lia.
+Qed.
+
+Lemma block_value_ranges_range :
+  forall factor lb q,
+    (0 &lt; factor)%nat -&gt;
+    0 &lt;= q -&gt;
+    block_value_ranges factor factor lb (Zrange 0 q) =
+    Zrange lb (lb + Z.of_nat factor * q).
+Proof.
+  intros factor lb q Hfactor Hq.
+  replace q with (Z.of_nat (Z.to_nat q)) by (rewrite Z2Nat.id; lia).
+  rewrite Zrange_0_nat.
+  apply block_value_ranges_range_nat. exact Hfactor.
+Qed.
+
+Lemma seq_two_semantics :
+  forall st1 st2 env mem1 mem3,
+    Loop.loop_semantics
+      (Loop.Seq (Loop.SCons st1 (Loop.SCons st2 Loop.SNil)))
+      env mem1 mem3 &lt;-&gt;
+    exists mem2,
+      Loop.loop_semantics st1 env mem1 mem2 /\
+      Loop.loop_semantics st2 env mem2 mem3.
+Proof.
+  intros st1 st2 env mem1 mem3.
+  split; intros Hsem.
+  - inversion_clear Hsem.
+    inversion_clear H0.
+    inversion H2; subst; clear H2.
+    exists mem2. split; assumption.
+  - destruct Hsem as [mem2 [Hst1 Hst2]].
+    eapply Loop.LSeq.
+    + exact Hst1.
+    + eapply Loop.LSeq.
+      * exact Hst2.
+      * constructor.
+Qed.
+
+Lemma insert_expr_at_correct :
+  forall pre inserted suf e,
+    Loop.eval_expr (pre ++ inserted :: suf) (insert_expr_at (length pre) e) =
+    Loop.eval_expr (pre ++ suf) e.
+Proof.
+  intros pre inserted suf e.
+  revert pre inserted suf.
+  induction e; intros pre0 inserted suf; simpl; try reflexivity.
+  - rewrite IHe1, IHe2. reflexivity.
+  - rewrite IHe. reflexivity.
+  - rewrite IHe. reflexivity.
+  - rewrite IHe. reflexivity.
+  - destruct (Nat.ltb n (length pre0)) eqn:Hlt.
+    + apply Nat.ltb_lt in Hlt.
+      apply Subst.nth_insert_before; auto.
+    + apply Nat.ltb_ge in Hlt.
+      change (nth (S n) (pre0 ++ inserted :: suf) 0 =
+              nth n (pre0 ++ suf) 0).
+      rewrite Subst.nth_insert_after by lia.
+      reflexivity.
+  - rewrite IHe1, IHe2. reflexivity.
+  - rewrite IHe1, IHe2. reflexivity.
+Qed.
+
+Lemma insert_expr_list_at_correct :
+  forall pre inserted suf es,
+    map (Loop.eval_expr (pre ++ inserted :: suf))
+      (map (insert_expr_at (length pre)) es) =
+    map (Loop.eval_expr (pre ++ suf)) es.
+Proof.
+  intros pre inserted suf es.
+  rewrite map_map.
+  apply map_ext.
+  intro e.
+  apply insert_expr_at_correct.
+Qed.
+
+Lemma insert_test_at_correct :
+  forall pre inserted suf t,
+    Loop.eval_test (pre ++ inserted :: suf) (insert_test_at (length pre) t) =
+    Loop.eval_test (pre ++ suf) t.
+Proof.
+  intros pre inserted suf t.
+  revert pre inserted suf.
+  induction t; intros pre0 inserted suf; simpl; try reflexivity.
+  - rewrite !insert_expr_at_correct. reflexivity.
+  - rewrite !insert_expr_at_correct. reflexivity.
+  - rewrite IHt1, IHt2. reflexivity.
+  - rewrite IHt1, IHt2. reflexivity.
+  - rewrite IHt. reflexivity.
+Qed.
+
+Scheme insert_stmt_ind_mut := Induction for Loop.stmt Sort Prop
+with insert_stmt_list_ind_mut := Induction for Loop.stmt_list Sort Prop.
+Combined Scheme insert_stmt_stmt_list_ind
+  from insert_stmt_ind_mut, insert_stmt_list_ind_mut.
+
+Theorem insert_stmt_at_correct :
+  (forall st pre inserted suf mem1 mem2,
+      Loop.loop_semantics (insert_stmt_at (length pre) st)
+        (pre ++ inserted :: suf) mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics st (pre ++ suf) mem1 mem2)
+  /\
+  (forall sts pre inserted suf mem1 mem2,
+      Loop.loop_semantics (Loop.Seq (insert_stmt_list_at (length pre) sts))
+        (pre ++ inserted :: suf) mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics (Loop.Seq sts) (pre ++ suf) mem1 mem2).
+Proof.
+  apply insert_stmt_stmt_list_ind; intros; simpl.
+  - split; intros Hsem.
+    + inversion_clear Hsem.
+      rewrite !(insert_expr_at_correct pre inserted suf) in H0.
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+      intros x mem3 mem4 Hx Hbody.
+      specialize (H (x :: pre) inserted suf mem3 mem4).
+      change ((x :: pre) ++ inserted :: suf)
+        with (x :: pre ++ inserted :: suf) in Hbody.
+      apply H in Hbody.
+      exact Hbody.
+    + inversion_clear Hsem.
+      rewrite &lt;- !(insert_expr_at_correct pre inserted suf) in H0.
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+      intros x mem3 mem4 Hx Hbody.
+      specialize (H (x :: pre) inserted suf mem3 mem4).
+      change ((x :: pre) ++ inserted :: suf)
+        with (x :: pre ++ inserted :: suf).
+      apply &lt;- H in Hbody.
+      exact Hbody.
+  - split; intros Hsem.
+    + inversion Hsem; subst; clear Hsem.
+      econstructor.
+      rewrite (insert_expr_list_at_correct pre inserted suf) in H4.
+      exact H4.
+    + inversion Hsem; subst; clear Hsem.
+      econstructor.
+      rewrite (insert_expr_list_at_correct pre inserted suf).
+      exact H4.
+  - split; intros Hsem.
+    + apply (H pre inserted suf). exact Hsem.
+    + apply &lt;- (H pre inserted suf). exact Hsem.
+  - split; intros Hsem.
+    + inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+      * apply Loop.LGuardTrue.
+        -- apply (H pre inserted suf). exact Hbody.
+        -- rewrite (insert_test_at_correct pre inserted suf) in Heq. exact Heq.
+      * apply Loop.LGuardFalse.
+        rewrite (insert_test_at_correct pre inserted suf) in Heq. exact Heq.
+    + inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+      * apply Loop.LGuardTrue.
+        -- apply &lt;- (H pre inserted suf). exact Hbody.
+        -- rewrite (insert_test_at_correct pre inserted suf). exact Heq.
+      * apply Loop.LGuardFalse.
+        rewrite (insert_test_at_correct pre inserted suf). exact Heq.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem; inversion_clear Hsem.
+    + apply (H pre inserted suf) in H1.
+      apply (H0 pre inserted suf) in H2.
+      econstructor; eauto.
+    + apply &lt;- (H pre inserted suf) in H1.
+      apply &lt;- (H0 pre inserted suf) in H2.
+      econstructor; eauto.
+Qed.
+
+Lemma insert_stmt_at_semantics :
+  forall st inserted env mem1 mem2,
+    Loop.loop_semantics (insert_stmt_at 0 st) (inserted :: env) mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics st env mem1 mem2.
+Proof.
+  intros.
+  specialize (proj1 insert_stmt_at_correct st [] inserted env mem1 mem2) as H.
+  simpl in H. exact H.
+Qed.
+
+Definition block_iter_expr
+    (factor offset: nat) (lb: Loop.expr) : Loop.expr :=
+  add_const_expr
+    (Loop.Sum (Subst.lift_expr lb) (Loop.Mult (Z.of_nat factor) (Loop.Var 0)))
+    (Z.of_nat offset).
+
+Fixpoint block_offset_stmt_list
+    (fuel factor offset: nat) (lb: Loop.expr) (body: Loop.stmt)
+    : Loop.stmt_list :=
+  match fuel with
+  | O =&gt; Loop.SNil
+  | S fuel&#x27; =&gt;
+      Loop.SCons
+        (Subst.subst_stmt_at 0
+          (block_iter_expr factor offset lb)
+          (insert_stmt_at 1 body))
+        (block_offset_stmt_list fuel&#x27; factor (S offset) lb body)
+  end.
+
+Lemma block_iter_expr_correct :
+  forall factor offset lb j env,
+    Loop.eval_expr (j :: env) (block_iter_expr factor offset lb) =
+    Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset.
+Proof.
+  intros factor offset lb j env.
+  unfold block_iter_expr.
+  rewrite add_const_expr_correct.
+  simpl. rewrite Subst.lift_expr_correct. lia.
+Qed.
+
+Lemma block_offset_stmt_list_semantics :
+  forall fuel factor offset lb body j env mem1 mem2,
+    Loop.loop_semantics
+      (Loop.Seq (block_offset_stmt_list fuel factor offset lb body))
+      (j :: env) mem1 mem2 &lt;-&gt;
+    Instr.IterSem.iter_semantics
+      (fun x =&gt; Loop.loop_semantics body (x :: env))
+      (Zrange
+        (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset)
+        (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset + Z.of_nat fuel))
+      mem1 mem2.
+Proof.
+  induction fuel as [|fuel IH]; intros factor offset lb body j env mem1 mem2; simpl.
+  - rewrite Zrange_empty by lia.
+    split; intros Hsem; inversion_clear Hsem; constructor.
+  - remember (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset) as base.
+    replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.pos (Pos.of_succ_nat offset))
+      with (base + 1) by (subst base; lia).
+    replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset + Z.pos (Pos.of_succ_nat fuel))
+      with (base + 1 + Z.of_nat fuel) by (subst base; lia).
+    rewrite Zrange_begin by lia.
+    replace (base + Z.pos (Pos.of_succ_nat fuel))
+      with (base + 1 + Z.of_nat fuel) by lia.
+    split; intros Hsem.
+    + inversion_clear Hsem.
+      apply Subst.subst_stmt_at_semantics in H.
+      rewrite block_iter_expr_correct in H.
+      rewrite &lt;- Heqbase in H.
+      match type of H with
+      | Loop.loop_semantics _ _ ?m1 ?m2 =&gt;
+          pose proof (proj1 insert_stmt_at_correct body [base] j env m1 m2)
+            as Hinsert;
+          simpl in Hinsert;
+          apply Hinsert in H
+      end.
+      apply IH in H0.
+      replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset))
+        with (base + 1) in H0 by (subst base; lia).
+      replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset) + Z.of_nat fuel)
+        with (base + 1 + Z.of_nat fuel) in H0 by (subst base; lia).
+      econstructor.
+      * exact H.
+      * exact H0.
+    + inversion_clear Hsem.
+      eapply Loop.LSeq.
+      * apply Subst.subst_stmt_at_semantics.
+        rewrite block_iter_expr_correct.
+        rewrite &lt;- Heqbase.
+        match type of H with
+        | Loop.loop_semantics _ _ ?m1 ?m2 =&gt;
+            pose proof (proj1 insert_stmt_at_correct body [base] j env m1 m2)
+              as Hinsert;
+            simpl in Hinsert;
+            apply &lt;- Hinsert in H
+        end.
+        exact H.
+      * apply IH.
+        replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset))
+          with (base + 1) by (subst base; lia).
+        replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset) + Z.of_nat fuel)
+          with (base + 1 + Z.of_nat fuel) by (subst base; lia).
+        exact H0.
+Qed.
+
+Definition block_main_loop_stmt
+    (factor: nat) (lb q: Loop.expr) (body: Loop.stmt) : Loop.stmt :=
+  Loop.Loop
+    (Loop.Constant 0)
+    q
+    (Loop.Seq (block_offset_stmt_list factor factor 0 lb body)).
+
+Lemma block_main_loop_stmt_semantics :
+  forall factor lb q body env mem1 mem2,
+    (0 &lt; factor)%nat -&gt;
+    0 &lt;= Loop.eval_expr env q -&gt;
+    Loop.loop_semantics
+      (block_main_loop_stmt factor lb q body) env mem1 mem2 &lt;-&gt;
+    Instr.IterSem.iter_semantics
+      (fun x =&gt; Loop.loop_semantics body (x :: env))
+      (Zrange
+        (Loop.eval_expr env lb)
+        (Loop.eval_expr env lb + Z.of_nat factor * Loop.eval_expr env q))
+      mem1 mem2.
+Proof.
+  intros factor lb q body env mem1 mem2 Hfactor Hqnonneg.
+  unfold block_main_loop_stmt.
+  set (lbv := Loop.eval_expr env lb).
+  set (qv := Loop.eval_expr env q).
+  set (f := Z.of_nat factor).
+  split; intros Hsem.
+  - inversion_clear Hsem.
+    simpl in H.
+    fold qv in H.
+    assert (Hblocks :
+      Instr.IterSem.iter_semantics
+        (fun j =&gt;
+          Instr.IterSem.iter_semantics
+            (fun x =&gt; Loop.loop_semantics body (x :: env))
+            (Zrange (lbv + f * j) (lbv + f * j + Z.of_nat factor)))
+        (Zrange 0 qv) mem1 mem2).
+    {
+      eapply Instr.IterSem.iter_semantics_map; [|exact H].
+      intros j st1 st2 _ Hbody.
+      apply block_offset_stmt_list_semantics in Hbody.
+      simpl in Hbody.
+      fold lbv f in Hbody.
+      replace (lbv + f * j + 0) with (lbv + f * j) in Hbody by lia.
+      exact Hbody.
+    }
+    subst f.
+    apply iter_semantics_concat_map in Hblocks.
+    rewrite &lt;- block_value_ranges_concat in Hblocks.
+    rewrite block_value_ranges_range in Hblocks by (try exact Hfactor; exact Hqnonneg).
+    exact Hblocks.
+  - subst f.
+    rewrite &lt;- block_value_ranges_range in Hsem by (try exact Hfactor; exact Hqnonneg).
+    rewrite block_value_ranges_concat in Hsem.
+    apply &lt;- iter_semantics_concat_map in Hsem.
+    apply Loop.LLoop.
+    simpl. fold qv.
+    eapply Instr.IterSem.iter_semantics_map; [|exact Hsem].
+    intros j st1 st2 _ Hbody.
+    apply block_offset_stmt_list_semantics.
+    simpl. fold lbv.
+    replace (lbv + Z.of_nat factor * j + 0)
+      with (lbv + Z.of_nat factor * j) by lia.
+    exact Hbody.
+Qed.
+
+Definition diff_expr (lb ub: Loop.expr) : Loop.expr :=
+  Loop.Sum ub (Loop.Mult (-1) lb).
+
+Definition block_count_expr
+    (factor: nat) (lb ub: Loop.expr) : Loop.expr :=
+  match factor with
+  | O =&gt; Loop.Constant 0
+  | S _ =&gt; Loop.Div (diff_expr lb ub) (Z.of_nat factor)
+  end.
+
+Definition block_tail_start_expr
+    (factor: nat) (lb q: Loop.expr) : Loop.expr :=
+  Loop.Sum lb (Loop.Mult (Z.of_nat factor) q).
+
+Definition block_unroll_stmt
+    (factor: nat) (lb ub: Loop.expr) (body: Loop.stmt) : Loop.stmt :=
+  match factor with
+  | O =&gt; Loop.Loop lb ub body
+  | S _ =&gt;
+      let q := block_count_expr factor lb ub in
+      let tail_lb := block_tail_start_expr factor lb q in
+      Loop.Guard
+        (Loop.LE (succ_expr lb) ub)
+        (Loop.Seq
+          (Loop.SCons
+            (block_main_loop_stmt factor lb q body)
+            (Loop.SCons (Loop.Loop tail_lb ub body) Loop.SNil)))
+  end.
+
+Lemma diff_expr_correct :
+  forall env lb ub,
+    Loop.eval_expr env (diff_expr lb ub) =
+    Loop.eval_expr env ub - Loop.eval_expr env lb.
+Proof.
+  intros env lb ub. unfold diff_expr. simpl. lia.
+Qed.
+
+Lemma block_tail_start_expr_correct :
+  forall env factor lb q,
+    Loop.eval_expr env (block_tail_start_expr factor lb q) =
+    Loop.eval_expr env lb + Z.of_nat factor * Loop.eval_expr env q.
+Proof.
+  intros env factor lb q. unfold block_tail_start_expr. simpl. lia.
+Qed.
+
+Theorem block_unroll_stmt_semantics :
+  forall factor lb ub body env mem1 mem2,
+    (0 &lt; factor)%nat -&gt;
+    Loop.loop_semantics (block_unroll_stmt factor lb ub body) env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics (Loop.Loop lb ub body) env mem1 mem2.
+Proof.
+  intros factor lb ub body env mem1 mem2 Hfactor.
+  destruct factor as [|factor&#x27;]; [lia|].
+  set (factor := S factor&#x27;) in *.
+  simpl block_unroll_stmt.
+  set (q := block_count_expr factor lb ub).
+  set (tail_lb := block_tail_start_expr factor lb q).
+  set (lbv := Loop.eval_expr env lb).
+  set (ubv := Loop.eval_expr env ub).
+  set (f := Z.of_nat factor).
+  assert (Hfpos : 0 &lt; f) by (subst f factor; lia).
+  assert (Htest_true :
+    Loop.eval_test env (Loop.LE (succ_expr lb) ub) = true &lt;-&gt;
+    lbv &lt; ubv).
+  {
+    subst lbv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_le. lia.
+  }
+  assert (Htest_false :
+    Loop.eval_test env (Loop.LE (succ_expr lb) ub) = false &lt;-&gt;
+    lbv &gt;= ubv).
+  {
+    subst lbv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_gt. lia.
+  }
+  assert (Hq_eval :
+    Loop.eval_expr env q = (ubv - lbv) / f).
+  {
+    subst q f factor lbv ubv. unfold block_count_expr, diff_expr. simpl.
+    reflexivity.
+  }
+  assert (Htail_eval :
+    Loop.eval_expr env tail_lb = lbv + f * Loop.eval_expr env q).
+  {
+    subst tail_lb f factor lbv. apply block_tail_start_expr_correct.
+  }
+  split; intros Hsem.
+  - inversion_clear Hsem as [| | | ? ? ? ? ? Hseq Hguard | ? ? ? ? Hguard |].
+    + apply Htest_true in Hguard.
+      apply seq_two_semantics in Hseq as [mem_mid [Hmain Htail]].
+      assert (Hqnonneg : 0 &lt;= Loop.eval_expr env q).
+      {
+        rewrite Hq_eval. apply Z.div_pos; lia.
+      }
+      apply block_main_loop_stmt_semantics in Hmain; [|lia|exact Hqnonneg].
+      inversion_clear Htail.
+      simpl in H.
+      fold lbv in H. fold ubv in H. fold f in H. fold q in H.
+      apply Loop.LLoop.
+      fold lbv. fold ubv.
+      replace (Zrange lbv ubv)
+        with (Zrange lbv (lbv + f * Loop.eval_expr env q) ++
+              Zrange (lbv + f * Loop.eval_expr env q) ubv).
+      * eapply iter_semantics_app; eauto.
+      * symmetry. apply Zrange_app.
+        -- rewrite Hq_eval. assert (0 &lt;= (ubv - lbv) / f) by (apply Z.div_pos; lia). lia.
+        -- rewrite Hq_eval. pose proof (Z.mul_div_le (ubv - lbv) f Hfpos). lia.
+    + apply Htest_false in Hguard.
+      apply Loop.LLoop.
+      simpl.
+      fold lbv. fold ubv.
+      rewrite Zrange_empty by lia.
+      constructor.
+  - inversion_clear Hsem.
+    destruct (Z_lt_ge_dec lbv ubv) as [Hlt|Hge].
+    + fold lbv in H. fold ubv in H.
+      assert (Hqnonneg : 0 &lt;= Loop.eval_expr env q).
+      {
+        rewrite Hq_eval. apply Z.div_pos; lia.
+      }
+      assert (Hmid_le : lbv + f * Loop.eval_expr env q &lt;= ubv).
+      {
+        rewrite Hq_eval. pose proof (Z.mul_div_le (ubv - lbv) f Hfpos). lia.
+      }
+      assert (Hlb_mid : lbv &lt;= lbv + f * Loop.eval_expr env q).
+      {
+        rewrite Hq_eval.
+        assert (Hdiv_nonneg : 0 &lt;= (ubv - lbv) / f) by (apply Z.div_pos; lia).
+        lia.
+      }
+      replace (Zrange lbv ubv)
+        with (Zrange lbv (lbv + f * Loop.eval_expr env q) ++
+              Zrange (lbv + f * Loop.eval_expr env q) ubv) in H
+        by (symmetry; apply Zrange_app; lia).
+      apply iter_semantics_app_inv in H as [mem_mid [Hmain Htail]].
+      apply Loop.LGuardTrue.
+      * apply seq_two_semantics.
+        exists mem_mid. split.
+        -- apply block_main_loop_stmt_semantics; [lia|exact Hqnonneg|].
+           exact Hmain.
+        -- apply Loop.LLoop.
+           simpl. fold lbv. fold ubv. fold f. fold q.
+           exact Htail.
+      * apply Htest_true. exact Hlt.
+    + fold lbv in H. fold ubv in H.
+      rewrite Zrange_empty in H by lia.
+      inversion H; subst; clear H.
+      apply Loop.LGuardFalse.
+      apply Htest_false. exact Hge.
+Qed.
+
+Lemma checked_peel_steps_semantics :
+  forall steps cur ub body env mem1 mem2,
+    check_peel_steps cur steps = true -&gt;
+    Loop.loop_semantics
+      (Loop.Seq (lower_peel_steps cur ub body steps))
+      env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  induction steps as [|step steps IH]; intros cur ub body env mem1 mem2 Hcheck; simpl in *.
+  - apply seq_single_loop_semantics.
+  - apply andb_true_iff in Hcheck as [Hstep Hrest].
+    pose proof (Subst.expr_eqb_correct _ _ Hstep env) as Hstep_eval.
+    remember (Loop.eval_expr env cur) as curv.
+    remember (Loop.eval_expr env ub) as ubv.
+    assert (Htest_true :
+      Loop.eval_test env (Loop.LE (succ_expr step) ub) = true &lt;-&gt;
+      curv &lt; ubv).
+    {
+      subst curv ubv. simpl. rewrite succ_expr_correct. rewrite Hstep_eval.
+      rewrite Z.leb_le. lia.
+    }
+    assert (Htest_false :
+      Loop.eval_test env (Loop.LE (succ_expr step) ub) = false &lt;-&gt;
+      curv &gt;= ubv).
+    {
+      subst curv ubv. simpl. rewrite succ_expr_correct. rewrite Hstep_eval.
+      rewrite Z.leb_gt. lia.
+    }
+    split; intros Hsem.
+    + inversion Hsem as
+        [| |env0 head0 tail0 mem10 memmid mem20 Hhead Htail| | |];
+        subst env0 head0 tail0 mem10 mem20; clear Hsem.
+      eapply (proj1 (IH (succ_expr cur) ub body env _ _ Hrest)) in Htail.
+      destruct (Z_lt_ge_dec curv ubv) as [Hlt|Hge].
+      * inversion Hhead as
+          [| | |
+           env0 test0 body0 mem10 mem20 Hbody Hguard
+           | env0 test0 body0 mem0 Hguard
+           |]; subst env0 test0 body0; clear Hhead.
+        -- apply Subst.subst_stmt_at_semantics in Hbody.
+           simpl in Hbody.
+           rewrite Hstep_eval in Hbody.
+           inversion Htail as
+             [| | | | |
+              env1 lb1 ub1 body1 mem11 mem21 Htail_iter];
+             subst env1 lb1 ub1 body1 mem11 mem21; clear Htail.
+           simpl in Htail_iter.
+           rewrite succ_expr_correct, &lt;- Heqcurv, &lt;- Hequbv in Htail_iter.
+           apply Loop.LLoop.
+           rewrite &lt;- Heqcurv, &lt;- Hequbv.
+           rewrite Zrange_begin by lia.
+           econstructor; eauto.
+        -- apply Htest_false in Hguard. lia.
+      * inversion Hhead as
+          [| | |
+           env0 test0 body0 mem10 mem20 Hbody Hguard
+           | env0 test0 body0 mem0 Hguard
+           |]; subst env0 test0 body0; clear Hhead.
+        -- apply Htest_true in Hguard. lia.
+        -- inversion Htail as
+             [| | | | |
+              env1 lb1 ub1 body1 mem11 mem21 Htail_iter];
+             subst env1 lb1 ub1 body1 mem11 mem21; clear Htail.
+           simpl in Htail_iter.
+           rewrite succ_expr_correct, &lt;- Heqcurv, &lt;- Hequbv in Htail_iter.
+           rewrite Zrange_empty in Htail_iter by lia.
+           inversion Htail_iter; subst; clear Htail_iter.
+           apply Loop.LLoop.
+           simpl.
+           rewrite Zrange_empty by lia.
+           constructor.
+    + inversion Hsem as
+        [| | | | |
+         env0 lb0 ub0 body0 mem10 mem20 Hiter];
+        subst env0 lb0 ub0 body0 mem10 mem20; clear Hsem.
+      destruct (Z_lt_ge_dec curv ubv) as [Hlt|Hge].
+      * rewrite &lt;- Heqcurv, &lt;- Hequbv in Hiter.
+        rewrite Zrange_begin in Hiter by lia.
+        inversion Hiter as
+          [|x xs mem10 memmid mem20 Hbody Htail];
+          subst x xs mem10 mem20; clear Hiter.
+        eapply Loop.LSeq.
+        -- apply Loop.LGuardTrue.
+           ++ apply Subst.subst_stmt_at_semantics.
+              simpl.
+              rewrite Hstep_eval.
+              exact Hbody.
+           ++ apply Htest_true. exact Hlt.
+        -- eapply (proj2 (IH (succ_expr cur) ub body env _ _ Hrest)).
+           apply Loop.LLoop.
+           simpl. rewrite succ_expr_correct.
+           rewrite &lt;- Heqcurv, &lt;- Hequbv.
+           exact Htail.
+      * rewrite &lt;- Heqcurv, &lt;- Hequbv in Hiter.
+        rewrite Zrange_empty in Hiter by lia.
+        inversion Hiter; subst; clear Hiter.
+        eapply Loop.LSeq.
+        -- apply Loop.LGuardFalse.
+           apply Htest_false. exact Hge.
+        -- eapply (proj2 (IH (succ_expr cur) ub body env _ _ Hrest)).
+           apply Loop.LLoop.
+           simpl. rewrite succ_expr_correct.
+           rewrite Zrange_empty by lia.
+           constructor.
+Qed.
+
+Lemma suffix_peel_stmt_semantics :
+  forall fuel lb ub body env mem1 mem2,
+    Loop.loop_semantics (suffix_peel_stmt fuel lb ub body) env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics (Loop.Loop lb ub body) env mem1 mem2.
+Proof.
+  induction fuel as [|fuel IH]; intros lb ub body env mem1 mem2; simpl.
+  - reflexivity.
+  - remember (Loop.eval_expr env lb) as lbv.
+    remember (Loop.eval_expr env ub) as ubv.
+    assert (Htest_true :
+      Loop.eval_test env (Loop.LE (succ_expr lb) ub) = true &lt;-&gt;
+      lbv &lt; ubv).
+    {
+      subst lbv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_le. lia.
+    }
+    assert (Htest_false :
+      Loop.eval_test env (Loop.LE (succ_expr lb) ub) = false &lt;-&gt;
+      lbv &gt;= ubv).
+    {
+      subst lbv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_gt. lia.
+    }
+    split; intros Hsem.
+    + apply seq_two_semantics in Hsem as [mem_mid [Hprefix Hlast]].
+      apply IH in Hprefix.
+      destruct (Z_lt_ge_dec lbv ubv) as [Hlt|Hge].
+      * apply Loop.LLoop.
+        rewrite &lt;- Heqlbv, &lt;- Hequbv.
+        replace (Zrange lbv ubv) with (Zrange lbv (ubv - 1) ++ [ubv - 1])
+          by (symmetry; apply Zrange_end; lia).
+        inversion_clear Hprefix.
+        inversion_clear Hlast as [| | | ? ? ? ? ? Hbody Hguard | ? ? ? ? Hguard |].
+        -- apply Subst.subst_stmt_at_semantics in Hbody.
+           simpl in Hbody.
+           rewrite pred_expr_correct in Hbody.
+           rewrite &lt;- Hequbv in Hbody.
+           simpl in H.
+           rewrite pred_expr_correct in H.
+           rewrite &lt;- Heqlbv, &lt;- Hequbv in H.
+           eapply iter_semantics_app.
+           ++ exact H.
+           ++ econstructor; [exact Hbody|constructor].
+        -- apply Htest_false in Hguard. lia.
+      * inversion_clear Hprefix.
+        simpl in H.
+        rewrite pred_expr_correct in H.
+        rewrite &lt;- Heqlbv, &lt;- Hequbv in H.
+        rewrite Zrange_empty in H by lia.
+        inversion H; subst; clear H.
+        inversion_clear Hlast as [| | | ? ? ? ? ? Hbody Hguard | ? ? ? ? Hguard |].
+        -- apply Htest_true in Hguard. lia.
+        -- apply Loop.LLoop.
+           simpl.
+           rewrite Zrange_empty by lia.
+           constructor.
+    + inversion_clear Hsem.
+      destruct (Z_lt_ge_dec lbv ubv) as [Hlt|Hge].
+      * rewrite &lt;- Heqlbv, &lt;- Hequbv in H.
+        replace (Zrange lbv ubv) with (Zrange lbv (ubv - 1) ++ [ubv - 1]) in H
+          by (symmetry; apply Zrange_end; lia).
+        apply iter_semantics_app_inv in H as [mem_mid [Hprefix Hlast]].
+        apply iter_semantics_single_inv in Hlast as Hbody.
+        apply seq_two_semantics.
+        exists mem_mid. split.
+        -- apply IH.
+           apply Loop.LLoop.
+           simpl. rewrite pred_expr_correct.
+           rewrite &lt;- Heqlbv, &lt;- Hequbv.
+           exact Hprefix.
+        -- apply Loop.LGuardTrue.
+           ++ apply Subst.subst_stmt_at_semantics.
+              simpl. rewrite pred_expr_correct.
+              rewrite &lt;- Hequbv.
+              exact Hbody.
+           ++ apply Htest_true. exact Hlt.
+      * rewrite &lt;- Heqlbv, &lt;- Hequbv in H.
+        rewrite Zrange_empty in H by lia.
+        inversion H; subst; clear H.
+        apply seq_two_semantics.
+        eexists. split.
+        -- apply IH.
+           apply Loop.LLoop.
+           simpl. rewrite pred_expr_correct.
+           rewrite Zrange_empty by lia.
+           constructor.
+        -- apply Loop.LGuardFalse.
+           apply Htest_false. exact Hge.
+Qed.
+
+Lemma checked_peel_plan_stmt_list_semantics :
+  forall plan cur ub body env mem1 mem2,
+    check_peel_plan cur ub plan = true -&gt;
+    Loop.loop_semantics
+      (Loop.Seq (lower_peel_plan_stmt_list plan cur ub body))
+      env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  intros plan cur ub body env mem1 mem2 Hcheck.
+  destruct plan as [steps|fuel]; simpl in *.
+  - apply checked_peel_steps_semantics. exact Hcheck.
+  - rewrite seq_single_stmt_semantics.
+    apply suffix_peel_stmt_semantics.
+Qed.
+
+Lemma checked_peel_plan_stmt_semantics :
+  forall plan cur ub body env mem1 mem2,
+    check_peel_plan cur ub plan = true -&gt;
+    Loop.loop_semantics
+      (lower_peel_plan_stmt plan cur ub body)
+      env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  intros plan cur ub body env mem1 mem2 Hcheck.
+  destruct plan as [steps|fuel]; simpl in *.
+  - apply checked_peel_steps_semantics. exact Hcheck.
+  - apply suffix_peel_stmt_semantics.
+Qed.
+
+Definition checked_lower_peel_plan_stmt
+    (plan: peel_plan) (cur ub: Loop.expr) (body: Loop.stmt) : option Loop.stmt :=
+  if check_peel_plan cur ub plan
+  then Some (lower_peel_plan_stmt plan cur ub body)
+  else None.
+
+Theorem checked_lower_peel_plan_stmt_correct :
+  forall plan cur ub body st env mem1 mem2,
+    checked_lower_peel_plan_stmt plan cur ub body = Some st -&gt;
+    Loop.loop_semantics st env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  intros plan cur ub body st env mem1 mem2 Hlower.
+  unfold checked_lower_peel_plan_stmt in Hlower.
+  destruct (check_peel_plan cur ub plan) eqn:Hcheck; try discriminate.
+  inversion Hlower; subst; clear Hlower.
+  apply checked_peel_plan_stmt_semantics. exact Hcheck.
+Qed.
+
+Lemma peel_unroll_stmt_list_semantics :
+  forall fuel cur ub body env mem1 mem2,
+    Loop.loop_semantics
+      (Loop.Seq (peel_unroll_stmt_list fuel cur ub body))
+      env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  intros fuel cur ub body env mem1 mem2.
+  unfold peel_unroll_stmt_list.
+  apply checked_peel_plan_stmt_list_semantics.
+  unfold check_peel_plan, prefix_peel_plan.
+  apply prefix_peel_steps_checked.
+Qed.
+
+Fixpoint const_unroll_stmt (st: Loop.stmt) : Loop.stmt :=
+  match st with
+  | Loop.Loop (Loop.Constant lb) (Loop.Constant ub) body =&gt;
+      Loop.Seq (seq_values (Zrange lb ub) (const_unroll_stmt body))
+  | Loop.Loop lb ub body =&gt;
+      Loop.Loop lb ub (const_unroll_stmt body)
+  | Loop.Instr i es =&gt; Loop.Instr i es
+  | Loop.Seq sts =&gt; Loop.Seq (const_unroll_stmt_list sts)
+  | Loop.Guard t body =&gt; Loop.Guard t (const_unroll_stmt body)
   end
-with simplify_stmts (ss : stmt_list) : stmt_list :=
-  match ss with
-  | SNil =&gt; SNil
-  | SCons s ss&#x27; =&gt;
-      SCons (simplify_stmt s) (simplify_stmts ss&#x27;)
+with const_unroll_stmt_list (sts: Loop.stmt_list) : Loop.stmt_list :=
+  match sts with
+  | Loop.SNil =&gt; Loop.SNil
+  | Loop.SCons st sts&#x27; =&gt;
+      Loop.SCons (const_unroll_stmt st) (const_unroll_stmt_list sts&#x27;)
   end.
 
-Definition make_guard (tst : BaseLoop.test) (body : stmt) : stmt :=
-  match tst with
-  | BaseLoop.TConstantTest true =&gt; body
-  | BaseLoop.TConstantTest false =&gt; Seq SNil
-  | _ =&gt; Guard tst body
-  end.
-
-Fixpoint cleanup_stmt (s : stmt) : stmt :=
-  match s with
-  | Loop mode od lb ub body =&gt;
-      Loop mode od lb ub (cleanup_stmt body)
-  | Instr i es =&gt; Instr i es
-  | Seq ss =&gt; make_stmt_from_list (cleanup_stmts ss)
-  | Guard tst body =&gt; make_guard tst (cleanup_stmt body)
+Fixpoint const_unroll_stmt_changed (st: Loop.stmt) : bool :=
+  match st with
+  | Loop.Loop (Loop.Constant _) (Loop.Constant _) _ =&gt; true
+  | Loop.Loop _ _ body =&gt; const_unroll_stmt_changed body
+  | Loop.Instr _ _ =&gt; false
+  | Loop.Seq sts =&gt; const_unroll_stmt_list_changed sts
+  | Loop.Guard _ body =&gt; const_unroll_stmt_changed body
   end
-with cleanup_stmts (ss : stmt_list) : stmt_list :=
-  match ss with
-  | SNil =&gt; SNil
-  | SCons s ss&#x27; =&gt;
-      match cleanup_stmt s with
-      | Seq SNil =&gt; cleanup_stmts ss&#x27;
-      | s&#x27; =&gt; SCons s&#x27; (cleanup_stmts ss&#x27;)
+with const_unroll_stmt_list_changed (sts: Loop.stmt_list) : bool :=
+  match sts with
+  | Loop.SNil =&gt; false
+  | Loop.SCons st sts&#x27; =&gt;
+      orb (const_unroll_stmt_changed st) (const_unroll_stmt_list_changed sts&#x27;)
+  end.
+
+Fixpoint peel_unroll_stmt (fuel: nat) (st: Loop.stmt) : Loop.stmt :=
+  match st with
+  | Loop.Loop lb ub body =&gt;
+      Loop.Seq (peel_unroll_stmt_list fuel lb ub body)
+  | Loop.Instr i es =&gt; Loop.Instr i es
+  | Loop.Seq sts =&gt; Loop.Seq (peel_unroll_stmt_list_rec fuel sts)
+  | Loop.Guard t body =&gt; Loop.Guard t (peel_unroll_stmt fuel body)
+  end
+with peel_unroll_stmt_list_rec (fuel: nat) (sts: Loop.stmt_list) : Loop.stmt_list :=
+  match sts with
+  | Loop.SNil =&gt; Loop.SNil
+  | Loop.SCons st sts&#x27; =&gt;
+      Loop.SCons (peel_unroll_stmt fuel st) (peel_unroll_stmt_list_rec fuel sts&#x27;)
+  end.
+
+Fixpoint suffix_peel_unroll_stmt (fuel: nat) (st: Loop.stmt) : Loop.stmt :=
+  match st with
+  | Loop.Loop lb ub body =&gt;
+      suffix_peel_stmt fuel lb ub body
+  | Loop.Instr i es =&gt; Loop.Instr i es
+  | Loop.Seq sts =&gt; Loop.Seq (suffix_peel_unroll_stmt_list_rec fuel sts)
+  | Loop.Guard t body =&gt; Loop.Guard t (suffix_peel_unroll_stmt fuel body)
+  end
+with suffix_peel_unroll_stmt_list_rec (fuel: nat) (sts: Loop.stmt_list) : Loop.stmt_list :=
+  match sts with
+  | Loop.SNil =&gt; Loop.SNil
+  | Loop.SCons st sts&#x27; =&gt;
+      Loop.SCons
+        (suffix_peel_unroll_stmt fuel st)
+        (suffix_peel_unroll_stmt_list_rec fuel sts&#x27;)
+  end.
+
+Fixpoint peel_unroll_stmt_changed (fuel: nat) (st: Loop.stmt) : bool :=
+  match fuel with
+  | O =&gt; false
+  | S _ =&gt;
+      match st with
+      | Loop.Loop _ _ _ =&gt; true
+      | Loop.Instr _ _ =&gt; false
+      | Loop.Seq sts =&gt; peel_unroll_stmt_list_changed fuel sts
+      | Loop.Guard _ body =&gt; peel_unroll_stmt_changed fuel body
+      end
+  end
+with peel_unroll_stmt_list_changed (fuel: nat) (sts: Loop.stmt_list) : bool :=
+  match sts with
+  | Loop.SNil =&gt; false
+  | Loop.SCons st sts&#x27; =&gt;
+      orb (peel_unroll_stmt_changed fuel st) (peel_unroll_stmt_list_changed fuel sts&#x27;)
+  end.
+
+Definition suffix_peel_unroll_stmt_changed : nat -&gt; Loop.stmt -&gt; bool :=
+  peel_unroll_stmt_changed.
+
+Definition suffix_peel_unroll_stmt_list_changed : nat -&gt; Loop.stmt_list -&gt; bool :=
+  peel_unroll_stmt_list_changed.
+
+Fixpoint block_unroll_stmt_rec (fuel: nat) (st: Loop.stmt) : Loop.stmt :=
+  match fuel with
+  | O =&gt; st
+  | S _ =&gt;
+      match st with
+      | Loop.Loop lb ub body =&gt;
+          block_unroll_stmt fuel lb ub (block_unroll_stmt_rec fuel body)
+      | Loop.Instr i es =&gt; Loop.Instr i es
+      | Loop.Seq sts =&gt; Loop.Seq (block_unroll_stmt_list_rec fuel sts)
+      | Loop.Guard t body =&gt; Loop.Guard t (block_unroll_stmt_rec fuel body)
+      end
+  end
+with block_unroll_stmt_list_rec (fuel: nat) (sts: Loop.stmt_list) : Loop.stmt_list :=
+  match fuel with
+  | O =&gt; sts
+  | S _ =&gt;
+      match sts with
+      | Loop.SNil =&gt; Loop.SNil
+      | Loop.SCons st sts&#x27; =&gt;
+          Loop.SCons
+            (block_unroll_stmt_rec fuel st)
+            (block_unroll_stmt_list_rec fuel sts&#x27;)
       end
   end.
 
-Definition cleanup_stmt_pass (s : stmt) : stmt :=
-  cleanup_stmt
-    (simplify_stmt
-      (singleton_elim_stmt
-        (cleanup_stmt (simplify_stmt s)))).
+Definition block_unroll_stmt_changed : nat -&gt; Loop.stmt -&gt; bool :=
+  peel_unroll_stmt_changed.
 
-(** * Full cleanup and semantic reflection *)
+Definition block_unroll_stmt_list_changed : nat -&gt; Loop.stmt_list -&gt; bool :=
+  peel_unroll_stmt_list_changed.
 
-Definition full_cleanup (p : t) : t :=
-  let &#x27;((s, ctxt), vars) := p in
-  ((cleanup_stmt_pass s, ctxt), vars).
+Scheme stmt_ind_mut := Induction for Loop.stmt Sort Prop
+with stmt_list_ind_mut := Induction for Loop.stmt_list Sort Prop.
+Combined Scheme stmt_stmt_list_ind from stmt_ind_mut, stmt_list_ind_mut.
 
-Local Lemma Forall2_impl_same :
-  forall A B (P Q : A -&gt; B -&gt; Prop) xs ys,
-    (forall x y, P x y -&gt; Q x y) -&gt;
-    Forall2 P xs ys -&gt;
-    Forall2 Q xs ys.
+Theorem const_unroll_stmt_correct :
+  (forall st env mem1 mem2,
+      Loop.loop_semantics (const_unroll_stmt st) env mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics st env mem1 mem2)
+  /\
+  (forall sts env mem1 mem2,
+      Loop.loop_semantics (Loop.Seq (const_unroll_stmt_list sts)) env mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics (Loop.Seq sts) env mem1 mem2).
 Proof.
-  intros A B P Q xs ys Himpl Hfor.
-  induction Hfor; constructor; auto.
+  apply stmt_stmt_list_ind; intros; simpl.
+  - destruct e; destruct e0; try solve [
+      split; intros Hsem; inversion_clear Hsem;
+      apply Loop.LLoop;
+      match goal with
+      | Hiter: Instr.IterSem.iter_semantics _ (Zrange _ _) _ _ |- _ =&gt;
+          eapply Instr.IterSem.iter_semantics_map; [|exact Hiter]
+      end;
+      intros x mem3 mem4 Hx Hbody;
+      [apply H | apply &lt;- H]; exact Hbody
+    ].
+    split; intros Hsem.
+    + apply seq_values_semantics in Hsem.
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact Hsem].
+      intros x mem3 mem4 Hx Hbody.
+      apply H. exact Hbody.
+    + inversion_clear Hsem.
+      apply seq_values_semantics.
+      match goal with
+      | Hiter: Instr.IterSem.iter_semantics _ (Zrange _ _) _ _ |- _ =&gt;
+          eapply Instr.IterSem.iter_semantics_map; [|exact Hiter]
+      end.
+      intros x mem3 mem4 Hx Hbody.
+      apply &lt;- H. exact Hbody.
+    all: try solve [eauto].
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem.
+    + apply H. exact Hsem.
+    + apply &lt;- H. exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+    + apply Loop.LGuardTrue; [apply H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+    + apply Loop.LGuardTrue; [apply &lt;- H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem; inversion_clear Hsem.
+    + apply H in H1. apply H0 in H2. econstructor; eauto.
+    + apply &lt;- H in H1. apply &lt;- H0 in H2. econstructor; eauto.
 Qed.
 
-Local Lemma make_stmt_from_list_par_trace_reflect :
-  forall ss env tr,
-    par_trace (make_stmt_from_list ss) env tr -&gt;
-    par_trace (Seq ss) env tr.
+Theorem peel_unroll_stmt_correct :
+  forall fuel,
+  (forall st env mem1 mem2,
+      Loop.loop_semantics (peel_unroll_stmt fuel st) env mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics st env mem1 mem2)
+  /\
+  (forall sts env mem1 mem2,
+      Loop.loop_semantics (Loop.Seq (peel_unroll_stmt_list_rec fuel sts)) env mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics (Loop.Seq sts) env mem1 mem2).
 Proof.
-  intros ss env tr Htrace.
-  destruct ss as [|s ss&#x27;]; simpl in Htrace |- *.
-  - exact Htrace.
-  - destruct ss&#x27; as [|s&#x27; ss&#x27;&#x27;]; simpl in Htrace |- *.
-    + apply PTSeqStmt.
-      replace tr with (tr ++ []) by apply app_nil_r.
-      constructor; [exact Htrace|constructor].
-    + exact Htrace.
+  intro fuel.
+  apply stmt_stmt_list_ind; intros; simpl.
+  - split; intros Hsem.
+    + apply peel_unroll_stmt_list_semantics in Hsem.
+      exact Hsem.
+    + inversion_clear Hsem.
+      apply peel_unroll_stmt_list_semantics.
+      apply Loop.LLoop.
+      exact H0.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem.
+    + apply H. exact Hsem.
+    + apply &lt;- H. exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+    + apply Loop.LGuardTrue; [apply H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+    + apply Loop.LGuardTrue; [apply &lt;- H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem; inversion_clear Hsem.
+    + apply H in H1. apply H0 in H2. econstructor; eauto.
+    + apply &lt;- H in H1. apply &lt;- H0 in H2. econstructor; eauto.
 Qed.
 
-Local Lemma make_guard_par_trace_reflect :
-  forall tst body env tr,
-    par_trace (make_guard tst body) env tr -&gt;
-    par_trace (Guard tst body) env tr.
+Theorem suffix_peel_unroll_stmt_correct :
+  forall fuel,
+  (forall st env mem1 mem2,
+      Loop.loop_semantics (suffix_peel_unroll_stmt fuel st) env mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics st env mem1 mem2)
+  /\
+  (forall sts env mem1 mem2,
+      Loop.loop_semantics (Loop.Seq (suffix_peel_unroll_stmt_list_rec fuel sts)) env mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics (Loop.Seq sts) env mem1 mem2).
 Proof.
-  intros tst body env tr Htrace.
-  destruct tst; simpl in Htrace |- *; try exact Htrace.
-  destruct b.
-  - eapply PTGuardTrue; [reflexivity|exact Htrace].
-  - inversion Htrace as [|env0 ss tr0 Hnil| | | | |]; subst.
-    inversion Hnil; subst.
-    eapply PTGuardFalse. reflexivity.
+  intro fuel.
+  apply stmt_stmt_list_ind; intros; simpl.
+  - apply suffix_peel_stmt_semantics.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem.
+    + apply H. exact Hsem.
+    + apply &lt;- H. exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+    + apply Loop.LGuardTrue; [apply H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+    + apply Loop.LGuardTrue; [apply &lt;- H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem; inversion_clear Hsem.
+    + apply H in H1. apply H0 in H2. econstructor; eauto.
+    + apply &lt;- H in H1. apply &lt;- H0 in H2. econstructor; eauto.
 Qed.
 
-Local Definition structural_trace_stmt_goal (s : stmt) : Prop :=
-  forall env tr,
-    par_trace (cleanup_stmt s) env tr -&gt;
-    par_trace s env tr.
-
-Local Definition structural_trace_stmts_goal (ss : stmt_list) : Prop :=
-  forall env tr,
-    par_traces (cleanup_stmts ss) env tr -&gt;
-    par_traces ss env tr.
-
-Local Lemma par_traces_cons_reflect :
-  forall head1 head2 tail1 tail2 env tr,
-    (forall head_tr,
-      par_trace head1 env head_tr -&gt;
-      par_trace head2 env head_tr) -&gt;
-    (forall tail_tr,
-      par_traces tail1 env tail_tr -&gt;
-      par_traces tail2 env tail_tr) -&gt;
-    par_traces (SCons head1 tail1) env tr -&gt;
-    par_traces (SCons head2 tail2) env tr.
+Theorem block_unroll_stmt_rec_correct :
+  forall fuel,
+  (forall st env mem1 mem2,
+      Loop.loop_semantics (block_unroll_stmt_rec fuel st) env mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics st env mem1 mem2)
+  /\
+  (forall sts env mem1 mem2,
+      Loop.loop_semantics (Loop.Seq (block_unroll_stmt_list_rec fuel sts)) env mem1 mem2 &lt;-&gt;
+      Loop.loop_semantics (Loop.Seq sts) env mem1 mem2).
 Proof.
-  intros head1 head2 tail1 tail2 env tr Hhead_reflect Htail_reflect Htrace.
-  inversion Htrace as
-      [|env0 head0 tail0 head_tr tail_tr Hhead Htail]; subst.
-  econstructor.
-  - eapply Hhead_reflect. exact Hhead.
-  - eapply Htail_reflect. exact Htail.
+  intro fuel.
+  apply stmt_stmt_list_ind; intros; destruct fuel as [|fuel&#x27;]; simpl.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem.
+    + change (Loop.loop_semantics
+          (block_unroll_stmt (S fuel&#x27;) e e0 (block_unroll_stmt_rec (S fuel&#x27;) s))
+          env mem1 mem2) in Hsem.
+      apply block_unroll_stmt_semantics in Hsem; [|lia].
+      inversion_clear Hsem.
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+      intros x mem3 mem4 _ Hbody.
+      apply H. exact Hbody.
+    + inversion_clear Hsem.
+      change (Loop.loop_semantics
+          (block_unroll_stmt (S fuel&#x27;) e e0 (block_unroll_stmt_rec (S fuel&#x27;) s))
+          env mem1 mem2).
+      apply block_unroll_stmt_semantics; [lia|].
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+      intros x mem3 mem4 _ Hbody.
+      apply &lt;- H. exact Hbody.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem.
+    + apply H. exact Hsem.
+    + apply &lt;- H. exact Hsem.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+    + apply Loop.LGuardTrue; [apply H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+    + apply Loop.LGuardTrue; [apply &lt;- H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem.
+    + apply H in H1. apply H0 in H2. econstructor; eauto.
+    + apply &lt;- H in H1. apply &lt;- H0 in H2. econstructor; eauto.
 Qed.
 
-Local Lemma cleanup_structural_par_trace_reflect_mutual :
-  (forall s, structural_trace_stmt_goal s) /\
-  (forall ss, structural_trace_stmts_goal ss).
+Lemma peel_unroll_stmt_semantics :
+  forall fuel st env mem1 mem2,
+    Loop.loop_semantics (peel_unroll_stmt fuel st) env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics st env mem1 mem2.
+Proof. intros. apply peel_unroll_stmt_correct. Qed.
+
+Lemma suffix_peel_unroll_stmt_semantics :
+  forall fuel st env mem1 mem2,
+    Loop.loop_semantics (suffix_peel_unroll_stmt fuel st) env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics st env mem1 mem2.
+Proof. intros. apply suffix_peel_unroll_stmt_correct. Qed.
+
+Lemma block_unroll_stmt_rec_semantics :
+  forall fuel st env mem1 mem2,
+    Loop.loop_semantics (block_unroll_stmt_rec fuel st) env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics st env mem1 mem2.
+Proof. intros. apply block_unroll_stmt_rec_correct. Qed.
+
+Lemma const_unroll_stmt_semantics :
+  forall st env mem1 mem2,
+    Loop.loop_semantics (const_unroll_stmt st) env mem1 mem2 &lt;-&gt;
+    Loop.loop_semantics st env mem1 mem2.
+Proof. intros. apply const_unroll_stmt_correct. Qed.
+
+Definition const_unroll (prog: Loop.t) : Loop.t :=
+  let &#x27;(st, ctxt, vars) := prog in
+  (const_unroll_stmt st, ctxt, vars).
+
+Definition const_unroll_changed (prog: Loop.t) : bool :=
+  let &#x27;(st, _, _) := prog in
+  const_unroll_stmt_changed st.
+
+Definition peel_unroll (fuel: nat) (prog: Loop.t) : Loop.t :=
+  let &#x27;(st, ctxt, vars) := prog in
+  (peel_unroll_stmt fuel st, ctxt, vars).
+
+Definition peel_unroll_changed (fuel: nat) (prog: Loop.t) : bool :=
+  let &#x27;(st, _, _) := prog in
+  peel_unroll_stmt_changed fuel st.
+
+Definition suffix_peel_unroll (fuel: nat) (prog: Loop.t) : Loop.t :=
+  let &#x27;(st, ctxt, vars) := prog in
+  (suffix_peel_unroll_stmt fuel st, ctxt, vars).
+
+Definition suffix_peel_unroll_changed (fuel: nat) (prog: Loop.t) : bool :=
+  let &#x27;(st, _, _) := prog in
+  suffix_peel_unroll_stmt_changed fuel st.
+
+Definition block_unroll (fuel: nat) (prog: Loop.t) : Loop.t :=
+  let &#x27;(st, ctxt, vars) := prog in
+  (block_unroll_stmt_rec fuel st, ctxt, vars).
+
+Definition block_unroll_changed (fuel: nat) (prog: Loop.t) : bool :=
+  let &#x27;(st, _, _) := prog in
+  block_unroll_stmt_changed fuel st.
+
+Theorem const_unroll_correct :
+  forall prog mem1 mem2,
+    Loop.semantics (const_unroll prog) mem1 mem2 &lt;-&gt;
+    Loop.semantics prog mem1 mem2.
 Proof.
-  apply p_stmt_stmts_mutind;
-    unfold structural_trace_stmt_goal, structural_trace_stmts_goal.
-  - intros mode od lb ub body IH env tr Htrace.
-    simpl in Htrace.
-    destruct mode.
-    + inversion Htrace as
-          [| | | |
-           od0 lb0 ub0 body0 env0 zs trs tr0 Hrange Htraces Hconcat
-           | |]; subst.
-      eapply PTLoopSeq with
-        (zs := Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub))
-        (trs := trs); [reflexivity| |reflexivity].
-      eapply Forall2_impl_same; [|exact Htraces].
-      intros z tri Htri. eapply IH. exact Htri.
-    + inversion Htrace as
-          [| | | | | |
-           d0 lb0 ub0 body0 env0 zs trs tr0 Hrange Htraces Hinter]; subst.
-      eapply PTLoopPar with
-        (zs := Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub))
-        (trs := trs); [reflexivity| |exact Hinter].
-      eapply Forall2_impl_same; [|exact Htraces].
-      intros z tri Htri. eapply IH. exact Htri.
-    + inversion Htrace as
-          [| | | | |
-           od0 lb0 ub0 body0 env0 zs trs tr0 Hrange Htraces Hconcat
-           |]; subst.
-      eapply PTLoopVec with
-        (zs := Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub))
-        (trs := trs); [reflexivity| |reflexivity].
-      eapply Forall2_impl_same; [|exact Htraces].
-      intros z tri Htri. eapply IH. exact Htri.
-  - intros i es env tr Htrace. exact Htrace.
-  - intros ss IH env tr Htrace. simpl in Htrace.
-    pose proof (make_stmt_from_list_par_trace_reflect _ _ _ Htrace)
-      as Hseq.
-    inversion Hseq as [|env0 ss0 tr0 Htraces| | | | |]; subst.
-    constructor. eapply IH. exact Htraces.
-  - intros tst body IH env tr Htrace. simpl in Htrace.
-    pose proof (make_guard_par_trace_reflect _ _ _ _ Htrace) as Hguard.
-    inversion Hguard as
-        [| |
-         env0 tst0 body0 tr0 Htest Hbody
-         | env0 tst0 body0 Htest
-         | | |]; subst.
-    + eapply PTGuardTrue; [exact Htest|]. eapply IH. exact Hbody.
-    + eapply PTGuardFalse. exact Htest.
-  - intros env tr Htrace. exact Htrace.
-  - intros s IHs ss IHss env tr Htrace. simpl in Htrace.
-    destruct (cleanup_stmt s) as
-      [mode od lb ub body|i es|clean_ss|tst body] eqn:Hclean.
-    + eapply par_traces_cons_reflect.
-      * intros head_tr Hhead. eapply IHs. exact Hhead.
-      * intros tail_tr Htail. eapply IHss. exact Htail.
-      * exact Htrace.
-    + eapply par_traces_cons_reflect.
-      * intros head_tr Hhead. eapply IHs. exact Hhead.
-      * intros tail_tr Htail. eapply IHss. exact Htail.
-      * exact Htrace.
-    + destruct clean_ss as [|clean_s clean_tail].
-      * assert (Hskip :
-          par_trace (cleanup_stmt s) env []).
-        {
-          rewrite Hclean. constructor. constructor.
-        }
-        rewrite Hclean in Hskip.
-        eapply PTTracesCons with (tr1 := []) (tr2 := tr).
-        -- eapply IHs. exact Hskip.
-        -- eapply IHss. exact Htrace.
-      * eapply par_traces_cons_reflect.
-        -- intros head_tr Hhead. eapply IHs. exact Hhead.
-        -- intros tail_tr Htail. eapply IHss. exact Htail.
-        -- exact Htrace.
-    + eapply par_traces_cons_reflect.
-      * intros head_tr Hhead. eapply IHs. exact Hhead.
-      * intros tail_tr Htail. eapply IHss. exact Htail.
-      * exact Htrace.
+  intros prog mem1 mem2.
+  destruct prog as [[st ctxt] vars]; simpl.
+  split; intros Hsem; inversion_clear Hsem; subst.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply const_unroll_stmt_semantics. exact H3.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply const_unroll_stmt_semantics. exact H3.
 Qed.
 
-Local Lemma cleanup_structural_par_trace_reflect :
-  forall s env tr,
-    par_trace (cleanup_stmt s) env tr -&gt;
-    par_trace s env tr.
+Theorem peel_unroll_correct :
+  forall fuel prog mem1 mem2,
+    Loop.semantics (peel_unroll fuel prog) mem1 mem2 &lt;-&gt;
+    Loop.semantics prog mem1 mem2.
 Proof.
-  exact (proj1 cleanup_structural_par_trace_reflect_mutual).
+  intros fuel prog mem1 mem2.
+  destruct prog as [[st ctxt] vars]; simpl.
+  split; intros Hsem; inversion_clear Hsem; subst.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply peel_unroll_stmt_semantics. exact H3.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply peel_unroll_stmt_semantics. exact H3.
 Qed.
 
-Local Lemma mk_instr_point_eval_equiv :
-  forall i es1 es2 env aff1 aff2,
-    BaseLoop.exprlist_to_aff es1 = Okk aff1 -&gt;
-    BaseLoop.exprlist_to_aff es2 = Okk aff2 -&gt;
-    map (BaseLoop.eval_expr env) es1 =
-    map (BaseLoop.eval_expr env) es2 -&gt;
-    point_sema_equiv
-      (BaseLoop.mk_instr_point i es1 env)
-      (BaseLoop.mk_instr_point i es2 env).
+Theorem suffix_peel_unroll_correct :
+  forall fuel prog mem1 mem2,
+    Loop.semantics (suffix_peel_unroll fuel prog) mem1 mem2 &lt;-&gt;
+    Loop.semantics prog mem1 mem2.
 Proof.
-  intros i es1 es2 env aff1 aff2 Haff1 Haff2 Heval st1 st2.
-  pose proof
-    (BaseLoop.exprlist_to_aff_correct es1 env aff1 Haff1) as Hargs1.
-  pose proof
-    (BaseLoop.exprlist_to_aff_correct es2 env aff2 Haff2) as Hargs2.
-  assert (Hargs : affine_product aff1 env = affine_product aff2 env).
-  {
-    rewrite &lt;- Hargs1, &lt;- Hargs2. exact Heval.
-  }
-  unfold BaseLoop.mk_instr_point.
-  rewrite Haff1, Haff2. simpl.
-  split; intro Hsem; inversion Hsem as [wcs rcs Hstep]; subst;
-    econstructor; simpl in *.
-  - rewrite &lt;- Hargs. exact Hstep.
-  - rewrite Hargs. exact Hstep.
+  intros fuel prog mem1 mem2.
+  destruct prog as [[st ctxt] vars]; simpl.
+  split; intros Hsem; inversion_clear Hsem; subst.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply suffix_peel_unroll_stmt_semantics. exact H3.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply suffix_peel_unroll_stmt_semantics. exact H3.
 Qed.
 
-Local Definition simplify_trace_stmt_goal (s : stmt) : Prop :=
-  forall env tr,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (simplify_stmt s) -&gt;
-    par_trace (simplify_stmt s) env tr -&gt;
-    exists tr0,
-      par_trace s env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-
-Local Definition simplify_trace_stmts_goal (ss : stmt_list) : Prop :=
-  forall env tr,
-    trace_safe_stmts ss -&gt;
-    trace_safe_stmts (simplify_stmts ss) -&gt;
-    par_traces (simplify_stmts ss) env tr -&gt;
-    exists tr0,
-      par_traces ss env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-
-Local Lemma simplify_par_trace_families_refine :
-  forall body env zs trs,
-    simplify_trace_stmt_goal body -&gt;
-    trace_safe_stmt body -&gt;
-    trace_safe_stmt (simplify_stmt body) -&gt;
-    Forall2
-      (fun z tr =&gt; par_trace (simplify_stmt body) (z :: env) tr)
-      zs trs -&gt;
-    exists trs0,
-      Forall2 (fun z tr =&gt; par_trace body (z :: env) tr) zs trs0 /\
-      Forall2 (Forall2 point_sema_equiv) trs trs0.
+Theorem block_unroll_correct :
+  forall fuel prog mem1 mem2,
+    Loop.semantics (block_unroll fuel prog) mem1 mem2 &lt;-&gt;
+    Loop.semantics prog mem1 mem2.
 Proof.
-  intros body env zs trs IH Hsafe Hsafe_simpl Htraces.
-  eapply par_trace_families_refine; [|exact Htraces].
-  intros z tr Htrace.
-  eapply IH; eauto.
+  intros fuel prog mem1 mem2.
+  destruct prog as [[st ctxt] vars]; simpl.
+  split; intros Hsem; inversion_clear Hsem; subst.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply block_unroll_stmt_rec_semantics. exact H3.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply block_unroll_stmt_rec_semantics. exact H3.
 Qed.
 
-Local Lemma simplify_par_trace_reflect_mutual :
-  (forall s, simplify_trace_stmt_goal s) /\
-  (forall ss, simplify_trace_stmts_goal ss).
-Proof.
-  apply p_stmt_stmts_mutind;
-    unfold simplify_trace_stmt_goal, simplify_trace_stmts_goal.
-  - intros mode od lb ub body IH env tr Hsafe Hsafe_simpl Htrace.
-    simpl in Hsafe, Hsafe_simpl, Htrace.
-    destruct mode.
-    + inversion Htrace as
-          [| | | |
-           od0 lb0 ub0 body0 env0 zs trs tr0 Hrange Htraces Hconcat
-           | |]; subst.
-      rewrite !simpl_expr_correct in Htraces.
-      destruct
-        (simplify_par_trace_families_refine
-          body env _ _ IH Hsafe Hsafe_simpl Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      exists (concat trs0). split.
-      * eapply PTLoopSeq with
-          (zs := Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub))
-          (trs := trs0); eauto.
-      * eapply Forall2_concat_point_sema_equiv. exact Hrels.
-    + inversion Htrace as
-          [| | | | | |
-           d0 lb0 ub0 body0 env0 zs trs tr0 Hrange Htraces Hinter]; subst.
-      rewrite !simpl_expr_correct in Htraces.
-      destruct
-        (simplify_par_trace_families_refine
-          body env _ _ IH Hsafe Hsafe_simpl Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      destruct (interleave_family_point_equiv _ _ _ Hinter Hrels)
-        as [tr0 [Hinter0 Hrel0]].
-      exists tr0. split.
-      * eapply PTLoopPar with
-          (zs := Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub))
-          (trs := trs0); eauto.
-      * exact Hrel0.
-    + inversion Htrace as
-          [| | | | |
-           od0 lb0 ub0 body0 env0 zs trs tr0 Hrange Htraces Hconcat
-           |]; subst.
-      rewrite !simpl_expr_correct in Htraces.
-      destruct
-        (simplify_par_trace_families_refine
-          body env _ _ IH Hsafe Hsafe_simpl Htraces)
-        as [trs0 [Htraces0 Hrels]].
-      exists (concat trs0). split.
-      * eapply PTLoopVec with
-          (zs := Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub))
-          (trs := trs0); eauto.
-      * eapply Forall2_concat_point_sema_equiv. exact Hrels.
-  - intros i es env tr Hsafe Hsafe_simpl Htrace.
-    simpl in Hsafe, Hsafe_simpl, Htrace.
-    inversion Htrace; subst.
-    destruct Hsafe as [aff0 Haff0].
-    destruct Hsafe_simpl as [aff1 Haff1].
-    exists [BaseLoop.mk_instr_point i es env]. split.
-    + constructor.
-    + constructor; [|constructor].
-      eapply mk_instr_point_eval_equiv; eauto.
-      apply simpl_expr_list_correct.
-  - intros ss IH env tr Hsafe Hsafe_simpl Htrace.
-    simpl in Hsafe, Hsafe_simpl, Htrace.
-    inversion Htrace as [|env0 ss0 tr0 Htraces| | | | |]; subst.
-    destruct (IH env tr Hsafe Hsafe_simpl Htraces) as [tr0 [Ht Hr]].
-    exists tr0. split; [constructor; exact Ht|exact Hr].
-  - intros tst body IH env tr Hsafe Hsafe_simpl Htrace.
-    simpl in Hsafe, Hsafe_simpl, Htrace.
-    inversion Htrace as
-        [| |
-         env0 tst0 body0 tr0 Htest Hbody
-         | env0 tst0 body0 Htest
-         | | |]; subst.
-    + rewrite simpl_test_correct in Htest.
-      destruct (IH env tr Hsafe Hsafe_simpl Hbody) as [tr0 [Ht Hr]].
-      exists tr0. split.
-      * eapply PTGuardTrue; eauto.
-      * exact Hr.
-    + rewrite simpl_test_correct in Htest.
-      exists (nil : list InstrPoint). split.
-      * eapply PTGuardFalse. exact Htest.
-      * constructor.
-  - intros env tr Hsafe Hsafe_simpl Htrace.
-    inversion Htrace; subst.
-    exists (nil : list InstrPoint); split; constructor.
-  - intros s IHs ss IHss env tr Hsafe Hsafe_simpl Htrace.
-    simpl in Hsafe, Hsafe_simpl.
-    destruct Hsafe as [Hsafe_s Hsafe_ss].
-    destruct Hsafe_simpl as [Hsafe_simpl_s Hsafe_simpl_ss].
-    inversion Htrace as
-        [|env0 s0 ss0 tr1 tr2 Hhead Htail]; subst.
-    destruct (IHs env tr1 Hsafe_s Hsafe_simpl_s Hhead)
-      as [tr1&#x27; [Ht1 Hr1]].
-    destruct (IHss env tr2 Hsafe_ss Hsafe_simpl_ss Htail)
-      as [tr2&#x27; [Ht2 Hr2]].
-    exists (tr1&#x27; ++ tr2&#x27;). split.
-    + econstructor; eauto.
-    + apply Forall2_app; assumption.
-Qed.
-
-Local Lemma simplify_par_trace_reflect :
-  forall s env tr,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (simplify_stmt s) -&gt;
-    par_trace (simplify_stmt s) env tr -&gt;
-    exists tr0,
-      par_trace s env tr0 /\
-      Forall2 point_sema_equiv tr tr0.
-Proof.
-  exact (proj1 simplify_par_trace_reflect_mutual).
-Qed.
-
-Local Lemma cleanup_structural_loop_semantics_reflect :
-  forall s env mem1 mem2,
-    loop_semantics (cleanup_stmt s) env mem1 mem2 -&gt;
-    loop_semantics s env mem1 mem2.
-Proof.
-  intros s env mem1 mem2 [tr [Htrace Hsem]].
-  exists tr. split; [|exact Hsem].
-  eapply cleanup_structural_par_trace_reflect. exact Htrace.
-Qed.
-
-Local Lemma simplify_loop_semantics_reflect :
-  forall s env mem1 mem2,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (simplify_stmt s) -&gt;
-    loop_semantics (simplify_stmt s) env mem1 mem2 -&gt;
-    loop_semantics s env mem1 mem2.
-Proof.
-  intros s env mem1 mem2 Hsafe Hsafe_simpl [tr [Htrace Hsem]].
-  destruct (simplify_par_trace_reflect s env tr Hsafe Hsafe_simpl Htrace)
-    as [tr0 [Htrace0 Hrel]].
-  exists tr0. split; [exact Htrace0|].
-  eapply instr_point_list_semantics_equiv; eauto.
-Qed.
-
-Local Theorem cleanup_stmt_pass_loop_semantics_reflect :
-  forall s env mem1 mem2,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (simplify_stmt s) -&gt;
-    trace_safe_stmt (cleanup_stmt (simplify_stmt s)) -&gt;
-    trace_safe_stmt
-      (singleton_elim_stmt (cleanup_stmt (simplify_stmt s))) -&gt;
-    trace_safe_stmt
-      (simplify_stmt
-        (singleton_elim_stmt (cleanup_stmt (simplify_stmt s)))) -&gt;
-    loop_semantics (cleanup_stmt_pass s) env mem1 mem2 -&gt;
-    loop_semantics s env mem1 mem2.
-Proof.
-  intros s env mem1 mem2 Hsafe0 Hsafe1 Hsafe2 Hsafe3 Hsafe4 Hsem.
-  unfold cleanup_stmt_pass in Hsem.
-  apply cleanup_structural_loop_semantics_reflect in Hsem.
-  eapply simplify_loop_semantics_reflect in Hsem; [|exact Hsafe3|exact Hsafe4].
-  eapply cleanup_loop_semantics_refine in Hsem; [|exact Hsafe2|exact Hsafe3].
-  apply cleanup_structural_loop_semantics_reflect in Hsem.
-  eapply simplify_loop_semantics_reflect in Hsem; eauto.
-Qed.
-
-Theorem full_cleanup_semantics_reflect :
-  forall s ctxt vars mem1 mem2,
-    trace_safe_stmt s -&gt;
-    trace_safe_stmt (simplify_stmt s) -&gt;
-    trace_safe_stmt (cleanup_stmt (simplify_stmt s)) -&gt;
-    trace_safe_stmt
-      (singleton_elim_stmt (cleanup_stmt (simplify_stmt s))) -&gt;
-    trace_safe_stmt
-      (simplify_stmt
-        (singleton_elim_stmt (cleanup_stmt (simplify_stmt s)))) -&gt;
-    semantics (full_cleanup ((s, ctxt), vars)) mem1 mem2 -&gt;
-    semantics ((s, ctxt), vars) mem1 mem2.
-Proof.
-  intros s ctxt vars mem1 mem2 Hsafe0 Hsafe1 Hsafe2 Hsafe3 Hsafe4 Hsem.
-  inversion Hsem as
-      [loop_ext loop ctxt&#x27; vars&#x27; env mem1&#x27; mem2&#x27;
-       Heq Hcompat Hna Hinit Hloop]; subst.
-  inversion Heq; subst.
-  econstructor.
-  - reflexivity.
-  - exact Hcompat.
-  - exact Hna.
-  - exact Hinit.
-  - eapply cleanup_stmt_pass_loop_semantics_reflect; eauto.
-Qed.
-
-End ParallelLoop.
+End LoopUnroll.
 </pre>
 </main>
 </body>

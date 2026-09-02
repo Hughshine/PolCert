@@ -3,36 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.c</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/e11c8bc9c6f9fb/after.c</code></h1>
-  <pre>#define S1(zT1,$i0)	y[$i0] = 0;
-#define S2(zT2,zT3,$i0,$i1)	y[$i0] = y[$i0] + a[$i0][$i1] * x[$i1];
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/e07f223b68a2aa/before.loop</code></h1>
+  <pre>context(M, N);
 
-		int t1, t2, t3, t4, t5, t6, t7, t8;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-if (N &gt;= 1) {
-  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
-    for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
-      S1(t2,t5);
+for i0 in range(1, ((M + -1) + 1)) {
+  symmat[i0][i0] = 1.0;
+  for i1 in range((i0 + 1), (M + 1)) {
+    symmat[i0][i1] = 0.0;
+    for i2 in range(1, (N + 1)) {
+      symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
     }
-    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
-      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
-        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
-          S2(t2,t4,t5,t7);
-        }
-      }
-    }
+    symmat[i1][i0] = symmat[i0][i1];
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

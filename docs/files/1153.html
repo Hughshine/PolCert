@@ -3,49 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/8e86cfcb3112eb/after.loop</code></h1>
-  <pre>context(N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/8e188ae4177b33/before.loop</code></h1>
+  <pre>context(m, n);
 
-if (1 &lt;= N) {
-  for i0 in range(0, ((N + 255) / 256)) {
-    for i1 in range(0, ((N + 255) / 256)) {
-      for i2 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
-        for i3 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((N + 31) / 32))) {
-          for i4 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
-            for i5 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
-              C[i4][i5] = 0;
-            }
-          }
-        }
-      }
-    }
+for i0 in range(1, (m + 1)) {
+  mean[i0] = 0.0;
+  for i1 in range(1, (n + 1)) {
+    mean[i0] = (mean[i0] + data[i1][i0]);
+  }
+  mean[i0] = (mean[i0] / float_n);
+}
+for i0 in range(1, (m + 1)) {
+  stddev[i0] = 0.0;
+  for i1 in range(1, (n + 1)) {
+    stddev[i0] = (stddev[i0] + ((data[i1][i0] - mean[i0]) * (data[i1][i0] - mean[i0])));
+  }
+  stddev[i0] = (stddev[i0] / float_n);
+  stddev[i0] = sqrt(stddev[i0]);
+  stddev[i0] = ((stddev[i0] &lt;= eps) ? 1.0 : stddev[i0]);
+}
+for i0 in range(1, (n + 1)) {
+  for i1 in range(1, (m + 1)) {
+    data[i0][i1] = (data[i0][i1] - mean[i1]);
+    x = sqrt(float_n);
+    x = (x * stddev[i1]);
+    data[i0][i1] = (data[i0][i1] / x);
   }
 }
-if (1 &lt;= N) {
-  for i0 in range(0, ((N + 255) / 256)) {
-    for i1 in range(0, ((N + 255) / 256)) {
-      for i2 in range(0, ((N + 255) / 256)) {
-        for i3 in range(max(0, (8 * i0)), min(((N + 31) / 32), ((8 * i0) + 8))) {
-          for i4 in range(max(0, (8 * i1)), min(((N + 31) / 32), ((8 * i1) + 8))) {
-            for i5 in range(max(0, (8 * i2)), min(((N + 31) / 32), ((8 * i2) + 8))) {
-              for i6 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
-                for i7 in range(max((32 * i4), 0), min(((32 * i4) + 32), N)) {
-                  for i8 in range(max((32 * i5), 0), min(((32 * i5) + 32), N)) {
-                    C[i6][i7] = (C[i6][i7] + (A[i6][i8] * B[i8][i7]));
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+for i0 in range(1, ((m + -1) + 1)) {
+  symmat[i0][i0] = 1.0;
+  for i1 in range((i0 + 1), (m + 1)) {
+    symmat[i0][i1] = 0.0;
+    for i2 in range(1, (n + 1)) {
+      symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
     }
+    symmat[i1][i0] = symmat[i0][i1];
   }
 }
 </pre>

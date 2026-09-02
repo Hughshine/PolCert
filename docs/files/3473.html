@@ -3,1126 +3,1519 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ISSCutSemantics.v</title>
+  <title>ExtractorFrontend.v</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/src/ISSCutSemantics.v</code></h1>
-  <pre>Require Import Bool.
-Require Import List.
-Require Import ZArith.
-Require Import Lia.
-Require Import SelectionSort.
-Require Import SetoidList.
-Require Import Sorting.Permutation.
-Require Import Base.
-Require Import Linalg.
-Require Import LinalgExt.
-Require Import ListExt.
-Require Import Misc.
-Require Import PolyBase.
-Require Import PolyLang.
-Require Import ISSWitness.
-Require Import ISSRefinement.
-Require Import ISSSemantics.
-Require Import TilingRelation.
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/src/ExtractorFrontend.v</code></h1>
+  <pre>Require Import ZArith.
+Require Import Bool.
+Require Import Result.
+Require Import ImpureAlarmConfig.
+Require Import String.
+
 Require Import PolIRs.
+
+Require Import AST.
+Require Import Base.
+Require Import PolyBase.
+Require Import List.
+Require Import SetoidList.
 Import ListNotations.
 
-Module ISSCutSemantics (PolIRs: POLIRS).
+Require Import Linalg.
+Require Import Lia.
+Require Import LibTactics.
+Require Import sflib.
+Require Import Misc.
+Require Import AffineValidator.
+Require Import Permutation.
+Require Import Sorting.Sorted.
+Require Import PointWitness.
+
+Module ExtractorFrontend (PolIRs: POLIRS).
 
 Module Instr := PolIRs.Instr.
+Module State := PolIRs.State.
+Module Ty := PolIRs.Ty.
 Module PolyLang := PolIRs.PolyLang.
-Module Refine := ISSRefinement PolIRs.
-Module Sem := ISSSemantics PolIRs.
-Module TileRel := TilingRelation Instr.
+Module Loop := PolIRs.Loop.
+Module Val := AffineValidator PolIRs.
+Definition ident := Instr.ident.
 
-(** * Proof map
+(** * Layer map
 
-    The ISS refinement predicates are semantic here.  Child instances are
-    mapped to their parent instances; coverage supplies every source point,
-    disjointness prevents duplicate children, and payload equality preserves
-    timestamps and instruction execution.  The final two theorems lift that
-    instance correspondence to polyhedral and whole-program semantics. *)
+    This file owns the executable extractor and the local correctness facts
+    for translating expressions, tests, bounds, domains, and schedule
+    prefixes.  It deliberately stops before reasoning about a complete
+    flattened execution.
 
-Lemma NoDup_map_on_local :
-  forall (A B: Type) (f: A -&gt; B) (l: list A),
-    NoDup l -&gt;
-    (forall x y,
-      In x l -&gt;
-      In y l -&gt;
-      f x = f y -&gt;
-      x = y) -&gt;
-    NoDup (List.map f l).
+    [ExtractorFacts] proves the list, slice, and ordering invariants of the
+    extracted instances.  [ExtractorCorrect] then uses those facts to
+    reconstruct the syntax-directed loop execution and prove
+    [extractor_correct].  Readers looking for the main structural induction
+    should therefore start in [ExtractorCorrect], not later in this file. *)
+
+(** * Affine frontend checks *)
+
+(* Note: empty domain contains exactly one instance: [] (empty list) *)
+
+(** The loop language already owns this conversion.  Keep the historical
+    extractor path as an alias rather than maintaining a second implementation. *)
+Definition expr_to_aff := Loop.expr_to_aff.
+
+Fixpoint wf_affine_expr (e: PolIRs.Loop.expr): bool :=
+    match e with
+    | PolIRs.Loop.Constant _ =&gt; true
+    | PolIRs.Loop.Var _ =&gt; true
+    | PolIRs.Loop.Mult _ e&#x27; =&gt; wf_affine_expr e&#x27;
+    | PolIRs.Loop.Sum e1 e2 =&gt; wf_affine_expr e1 &amp;&amp; wf_affine_expr e2
+    | _ =&gt; false
+    end.
+
+Fixpoint wf_affine_expr_list (es: list PolIRs.Loop.expr): bool :=
+    match es with
+    | [] =&gt; true
+    | e :: es&#x27; =&gt; wf_affine_expr e &amp;&amp; wf_affine_expr_list es&#x27;
+    end.
+
+Fixpoint wf_affine_test (tst: PolIRs.Loop.test): bool :=
+    match tst with
+    | PolIRs.Loop.LE e1 e2 =&gt; wf_affine_expr e1 &amp;&amp; wf_affine_expr e2
+    | PolIRs.Loop.EQ e1 e2 =&gt; wf_affine_expr e1 &amp;&amp; wf_affine_expr e2
+    | PolIRs.Loop.And t1 t2 =&gt; wf_affine_test t1 &amp;&amp; wf_affine_test t2
+    | _ =&gt; false
+    end.
+
+Fixpoint wf_scop_stmt (stmt: PolIRs.Loop.stmt): bool :=
+    match stmt with
+    | PolIRs.Loop.Instr _ es =&gt; wf_affine_expr_list es
+    | PolIRs.Loop.Seq stmts =&gt; wf_scop_stmts stmts
+    | PolIRs.Loop.Loop lb ub body =&gt;
+        wf_affine_expr lb &amp;&amp; wf_affine_expr ub &amp;&amp; wf_scop_stmt body
+    | PolIRs.Loop.Guard test body =&gt;
+        wf_affine_test test &amp;&amp; wf_scop_stmt body
+    end
+with wf_scop_stmts (stmts: PolIRs.Loop.stmt_list): bool :=
+    match stmts with
+    | PolIRs.Loop.SNil =&gt; true
+    | PolIRs.Loop.SCons stmt stmts&#x27; =&gt; wf_scop_stmt stmt &amp;&amp; wf_scop_stmts stmts&#x27;
+    end.
+
+Lemma andb_true_iff_local0:
+    forall b1 b2, (b1 &amp;&amp; b2)%bool = true &lt;-&gt; b1 = true /\ b2 = true.
 Proof.
-  apply TileRel.NoDup_map_on.
+    exact andb_true_iff.
 Qed.
 
-Definition instr_point_np_key (ip: PolyLang.InstrPoint) : list Z :=
-  Z.of_nat (PolyLang.ip_nth ip) :: PolyLang.ip_index ip.
-
-Definition instr_point_np_ltb
-    (ip1 ip2: PolyLang.InstrPoint) : bool :=
-  comparison_eqb
-    (lex_compare (instr_point_np_key ip1) (instr_point_np_key ip2))
-    Lt.
-
-Definition instr_point_np_eqb
-    (ip1 ip2: PolyLang.InstrPoint) : bool :=
-  comparison_eqb
-    (lex_compare (instr_point_np_key ip1) (instr_point_np_key ip2))
-    Eq.
-
-Lemma instr_point_np_ltb_trans :
-  transitive instr_point_np_ltb.
+Lemma wf_scop_seq_inv:
+    forall stmts,
+    wf_scop_stmt (PolIRs.Loop.Seq stmts) = true -&gt;
+    wf_scop_stmts stmts = true.
 Proof.
-  unfold transitive.
-  intros x y z Hxy Hyz.
-  unfold instr_point_np_ltb in *.
-  eapply comparison_eqb_iff_eq in Hxy.
-  eapply comparison_eqb_iff_eq in Hyz.
-  eapply comparison_eqb_iff_eq.
-  eapply lex_compare_trans; eauto.
+    intros stmts Hwf.
+    simpl in Hwf. exact Hwf.
 Qed.
 
-Lemma instr_point_np_eqb_trans :
-  transitive instr_point_np_eqb.
+Lemma wf_scop_loop_inv:
+    forall lb ub body,
+    wf_scop_stmt (PolIRs.Loop.Loop lb ub body) = true -&gt;
+    wf_affine_expr lb = true /\
+    wf_affine_expr ub = true /\
+    wf_scop_stmt body = true.
 Proof.
-  unfold transitive.
-  intros x y z Hxy Hyz.
-  unfold instr_point_np_eqb in *.
-  eapply comparison_eqb_iff_eq in Hxy.
-  eapply comparison_eqb_iff_eq in Hyz.
-  eapply comparison_eqb_iff_eq.
-  eapply lex_compare_trans; eauto.
+    intros lb ub body Hwf.
+    simpl in Hwf.
+    eapply andb_true_iff_local0 in Hwf.
+    destruct Hwf as [Hlbub Hbody].
+    eapply andb_true_iff_local0 in Hlbub.
+    destruct Hlbub as [Hlb Hub].
+    repeat split; auto.
 Qed.
 
-Lemma instr_point_np_eqb_refl :
-  reflexive instr_point_np_eqb.
+Lemma wf_scop_guard_inv:
+    forall test body,
+    wf_scop_stmt (PolIRs.Loop.Guard test body) = true -&gt;
+    wf_affine_test test = true /\
+    wf_scop_stmt body = true.
 Proof.
-  unfold reflexive, instr_point_np_eqb.
-  intro x.
-  eapply comparison_eqb_iff_eq.
-  eapply lex_compare_reflexive.
+    intros test body Hwf.
+    simpl in Hwf.
+    eapply andb_true_iff_local0 in Hwf.
+    exact Hwf.
 Qed.
 
-Lemma instr_point_np_eqb_symm :
-  symmetric instr_point_np_eqb.
+Lemma wf_scop_stmts_cons_inv:
+    forall stmt stmts&#x27;,
+    wf_scop_stmts (PolIRs.Loop.SCons stmt stmts&#x27;) = true -&gt;
+    wf_scop_stmt stmt = true /\
+    wf_scop_stmts stmts&#x27; = true.
 Proof.
-  unfold symmetric, instr_point_np_eqb.
-  intros x y.
-  rewrite lex_compare_antisym.
-  destruct (lex_compare (instr_point_np_key y) (instr_point_np_key x)); reflexivity.
+    intros stmt stmts&#x27; Hwf.
+    simpl in Hwf.
+    eapply andb_true_iff_local0 in Hwf.
+    exact Hwf.
 Qed.
 
-Lemma instr_point_np_cmp_total :
-  total instr_point_np_ltb instr_point_np_eqb.
+Lemma expr_to_aff_correct: 
+    forall e env aff v z, expr_to_aff e = Okk aff -&gt; 
+    aff = (v, z) -&gt;
+    PolIRs.Loop.eval_expr env e = (dot_product env v) + z.
 Proof.
-  unfold total, instr_point_np_ltb, instr_point_np_eqb.
-  intros x y.
-  destruct (lex_compare (instr_point_np_key x) (instr_point_np_key y)) eqn:Hcmp.
-  - right. right. reflexivity.
-  - left. reflexivity.
-  - right. left.
-    rewrite lex_compare_antisym.
-    rewrite Hcmp.
+    exact Loop.expr_to_aff_correct.
+Qed.
+
+Example test_expr_to_aff_1: 
+    expr_to_aff (PolIRs.Loop.Constant 5%Z) = Okk ([], 5%Z).
+Proof. reflexivity. Qed.
+
+Example test_expr_to_aff_2:
+    (expr_to_aff (PolIRs.Loop.Var 3)) = Okk ([0%Z; 0%Z; 0%Z; 1%Z], 0%Z).
+Proof. reflexivity. Qed.
+
+Example test_expr_to_aff_3:
+    (expr_to_aff (PolIRs.Loop.Mult 2%Z (PolIRs.Loop.Var 4))) = Okk ([0%Z; 0%Z; 0%Z; 0%Z; 2%Z], 0%Z).
+Proof. reflexivity. Qed.
+
+Example test_expr_to_aff_4: 
+    (expr_to_aff (PolIRs.Loop.Sum (PolIRs.Loop.Var 3) (PolIRs.Loop.Constant 5%Z))) = Okk ([0%Z; 0%Z; 0%Z; 1%Z], 5%Z).
+Proof. reflexivity. Qed.
+
+Example test_expr_to_aff_5: 
+    (expr_to_aff (PolIRs.Loop.Sum 
+                        (PolIRs.Loop.Var 3) 
+                        (PolIRs.Loop.Mult 2%Z (PolIRs.Loop.Var 4))
+                    )) 
+    = Okk ([0%Z; 0%Z; 0%Z; 1%Z; 2%Z], 0%Z).
+Proof. reflexivity. Qed.
+
+Example test_expr_to_aff_6: 
+    (expr_to_aff (PolIRs.Loop.Sum 
+                        (PolIRs.Loop.Var 3) 
+                    (PolIRs.Loop.Sum 
+                        (PolIRs.Loop.Mult 2%Z (PolIRs.Loop.Var 4))
+                        (PolIRs.Loop.Constant 5%Z)
+                    )))
+    = Okk ([0%Z; 0%Z; 0%Z; 1%Z; 2%Z], 5%Z).
+Proof. reflexivity. Qed.
+
+Fixpoint exprlist_to_aff (es: list PolIRs.Loop.expr) (cols: nat): result (list (list Z * Z))
+:= 
+    match es with 
+    | [] =&gt; Okk []
+    | e :: es&#x27; =&gt; 
+        match (expr_to_aff e) with 
+        | Okk (v, c) =&gt;
+            let aff := (resize cols v, c) in
+            match (exprlist_to_aff es&#x27; cols) with
+            | Okk affs =&gt; Okk (aff :: affs)
+            | Err msg =&gt; Err msg
+            end
+        | Err msg =&gt; Err msg
+        end
+    end.
+
+Lemma exprlist_to_aff_correct:
+    forall es env cols affs,
+    exprlist_to_aff es cols = Okk affs -&gt;
+    Datatypes.length env = cols -&gt;
+    map (Loop.eval_expr env) es = affine_product affs env.
+Proof.
+    induction es as [|e es IH]; intros env cols affs Haff Hlen; simpl in Haff.
+    - inversion Haff; clear Haff; subst affs. reflexivity.
+    - destruct (expr_to_aff e) as [[v c]|msg] eqn:He; try discriminate.
+      destruct (exprlist_to_aff es cols) as [affs&#x27;|msg&#x27;] eqn:Hes; try discriminate.
+      pose proof Hlen as Hlen0.
+      inversion Haff; clear Haff; subst affs. simpl.
+      f_equal.
+      + pose proof (expr_to_aff_correct e env (v, c) v c He eq_refl) as Heval.
+        simpl.
+        rewrite Heval.
+        rewrite dot_product_commutative.
+        assert (dot_product (resize cols v) env = dot_product v env) as Hdot.
+        { rewrite &lt;- Hlen0. rewrite dot_product_resize_left. reflexivity. }
+        rewrite Hdot.
+        reflexivity.
+      + eapply IH; eauto.
+Qed.
+
+Definition normalize_affine (cols: nat) (aff: list Z * Z): (list Z * Z) :=
+    let (v, c) := aff in (resize cols v, c).
+
+Definition normalize_affine_list (cols: nat) (affs: list (list Z * Z)) :=
+    map (normalize_affine cols) affs.
+
+Definition normalize_access (cols: nat) (acc: AccessFunction): AccessFunction :=
+    let (arrid, affs) := acc in (arrid, normalize_affine_list cols affs).
+
+Definition normalize_access_list (cols: nat) (accs: list AccessFunction) :=
+    map (normalize_access cols) accs.
+
+Definition lift_affine (aff: list Z * Z): (list Z * Z) :=
+    let (v, c) := aff in (0%Z :: v, c).
+
+Definition lift_affine_list (affs: list (list Z * Z)) :=
+    map lift_affine affs.
+
+Fixpoint lift_affine_list_n (n: nat) (affs: list (list Z * Z)) :=
+    match n with
+    | O =&gt; affs
+    | S n&#x27; =&gt; lift_affine_list (lift_affine_list_n n&#x27; affs)
+    end.
+
+Lemma lift_affine_list_app:
+    forall l1 l2,
+    lift_affine_list (l1 ++ l2) = lift_affine_list l1 ++ lift_affine_list l2.
+Proof.
+    intros l1 l2.
+    unfold lift_affine_list.
+    rewrite map_app.
     reflexivity.
 Qed.
 
-Lemma instr_point_np_eqb_ltb_implies_ltb :
-  eqb_ltb_implies_ltb instr_point_np_ltb instr_point_np_eqb.
+Lemma lift_affine_list_n_app:
+    forall n l1 l2,
+    lift_affine_list_n n (l1 ++ l2) =
+    lift_affine_list_n n l1 ++ lift_affine_list_n n l2.
 Proof.
-  unfold eqb_ltb_implies_ltb.
-  intros x y z Hxy Hyz.
-  unfold instr_point_np_eqb in Hxy.
-  unfold instr_point_np_ltb in *.
-  rewrite comparison_eqb_iff_eq in Hxy.
-  rewrite comparison_eqb_iff_eq in Hyz.
-  rewrite comparison_eqb_iff_eq.
-  remember (instr_point_np_key x) as a.
-  remember (instr_point_np_key y) as b.
-  remember (instr_point_np_key z) as c.
-  clear Heqa Heqb Heqc.
-  rewrite lex_compare_left_eq with (t2 := b); trivial.
-  eapply is_eq_iff_cmp_eq; eauto.
-Qed.
-
-Lemma instr_point_np_ltb_eqb_implies_ltb :
-  ltb_eqb_implies_ltb instr_point_np_ltb instr_point_np_eqb.
-Proof.
-  unfold ltb_eqb_implies_ltb.
-  intros x y z Hxy Hyz.
-  unfold instr_point_np_eqb in Hyz.
-  unfold instr_point_np_ltb in *.
-  rewrite comparison_eqb_iff_eq in Hxy.
-  rewrite comparison_eqb_iff_eq in Hyz.
-  rewrite comparison_eqb_iff_eq.
-  remember (instr_point_np_key x) as a.
-  remember (instr_point_np_key y) as b.
-  remember (instr_point_np_key z) as c.
-  clear Heqa Heqb Heqc.
-  eapply is_eq_iff_cmp_eq in Hyz; eauto.
-  eapply lex_compare_right_eq with (t1 := a) in Hyz; eauto.
-  rewrite Hyz in Hxy.
-  exact Hxy.
-Qed.
-
-Lemma instr_point_np_eqb_implies_np_eq :
-  forall ip1 ip2,
-    instr_point_np_eqb ip1 ip2 = true -&gt;
-    PolyLang.np_eq ip1 ip2.
-Proof.
-  intros [nth1 idx1 tf1 ts1 instr1 dep1]
-         [nth2 idx2 tf2 ts2 instr2 dep2].
-  unfold instr_point_np_eqb, instr_point_np_key, PolyLang.np_eq.
-  simpl.
-  intros Heq.
-  rewrite comparison_eqb_iff_eq in Heq.
-  simpl in Heq.
-  destruct (Z.of_nat nth1 ?= Z.of_nat nth2) eqn:Hcmp; try discriminate.
-  split.
-  - apply Z.compare_eq_iff in Hcmp.
-    lia.
-  - exact Heq.
-Qed.
-
-Lemma instr_point_np_ltb_implies_np_lt :
-  forall ip1 ip2,
-    instr_point_np_ltb ip1 ip2 = true -&gt;
-    PolyLang.np_lt ip1 ip2.
-Proof.
-  intros [nth1 idx1 tf1 ts1 instr1 dep1]
-         [nth2 idx2 tf2 ts2 instr2 dep2].
-  unfold instr_point_np_ltb, instr_point_np_key, PolyLang.np_lt.
-  simpl.
-  intros Hlt.
-  rewrite comparison_eqb_iff_eq in Hlt.
-  simpl in Hlt.
-  destruct (Z.of_nat nth1 ?= Z.of_nat nth2) eqn:Hcmp; try discriminate.
-  - right.
-    split.
-    + apply Z.compare_eq_iff in Hcmp.
-      lia.
-    + exact Hlt.
-  - left.
-    apply Z.compare_lt_iff in Hcmp.
-    apply Nat2Z.inj_lt.
-    exact Hcmp.
-Qed.
-
-Lemma sortedb_instr_point_np_implies_sorted_np :
-  forall ipl,
-    Sorted_b (combine_leb instr_point_np_ltb instr_point_np_eqb) ipl -&gt;
-    NoDupA PolyLang.np_eq ipl -&gt;
-    Sorted PolyLang.np_lt ipl.
-Proof.
-  assert (Hhd_strict :
-    forall a tail,
-      HdRel
-        (fun x y =&gt;
-           combine_leb instr_point_np_ltb instr_point_np_eqb x y = true)
-        a tail -&gt;
-      ~ InA PolyLang.np_eq a tail -&gt;
-      HdRel PolyLang.np_lt a tail).
-  {
-    intros a tail Hhd Hnotin.
-    inversion Hhd as [|b tail&#x27; Hord]; subst.
-    - constructor.
-    - constructor.
-      unfold combine_leb in Hord.
-      apply orb_true_iff in Hord.
-      destruct Hord as [Hlt|Heq].
-      + eapply instr_point_np_ltb_implies_np_lt; eauto.
-      + exfalso.
-        apply Hnotin.
-        eapply InA_cons_hd.
-        eapply instr_point_np_eqb_implies_np_eq; eauto.
-  }
-  induction ipl as [|a ipl IH]; intros Hsorted Hnd.
-  - constructor.
-  - inversion Hsorted as [|? ? Hsorted_tail Hhd]; subst.
-    inversion Hnd as [|? ? Hnotin Hnd_tail]; subst.
-    constructor.
-    + eapply IH; eauto.
-    + eapply Hhd_strict; eauto.
-Qed.
-
-Lemma instr_point_list_semantics_map_preserved :
-  forall (f: PolyLang.InstrPoint -&gt; PolyLang.InstrPoint) ipl st1 st2,
-    (forall ip s1 s2,
-      In ip ipl -&gt;
-      (PolyLang.ILSema.instr_point_sema ip s1 s2 &lt;-&gt;
-       PolyLang.ILSema.instr_point_sema (f ip) s1 s2)) -&gt;
-    PolyLang.ILSema.instr_point_list_semantics ipl st1 st2 -&gt;
-    PolyLang.ILSema.instr_point_list_semantics (List.map f ipl) st1 st2.
-Proof.
-  intros f ipl st1 st2 Hequiv Hsema.
-  induction Hsema.
-  - simpl.
-    econstructor.
-    exact H.
-  - simpl.
-    econstructor.
-    + eapply (proj1 (Hequiv ip st1 st2 (or_introl eq_refl))).
-      exact H.
-    + eapply IHHsema.
-      intros ip&#x27; s1 s2 Hin.
-      eapply Hequiv.
-      right.
-      exact Hin.
-Qed.
-
-Lemma HdRel_sched_map_time_stamp_preserved :
-  forall (f: PolyLang.InstrPoint -&gt; PolyLang.InstrPoint) ip ipl,
-    (forall ip&#x27;,
-      In ip&#x27; (ip :: ipl) -&gt;
-      PolyLang.ip_time_stamp (f ip&#x27;) = PolyLang.ip_time_stamp ip&#x27;) -&gt;
-    HdRel PolyLang.instr_point_sched_le ip ipl -&gt;
-    HdRel PolyLang.instr_point_sched_le (f ip) (List.map f ipl).
-Proof.
-  intros f ip ipl Hts Hhd.
-  induction Hhd as [|b l Hle].
-  - simpl.
-    constructor.
-  - simpl.
-    constructor.
-    unfold PolyLang.instr_point_sched_le in *.
-    rewrite (Hts ip (or_introl eq_refl)).
-    rewrite (Hts b (or_intror (or_introl eq_refl))).
-    exact Hle.
-Qed.
-
-Lemma sorted_sched_map_time_stamp_preserved :
-  forall (f: PolyLang.InstrPoint -&gt; PolyLang.InstrPoint) ipl,
-    (forall ip,
-      In ip ipl -&gt;
-      PolyLang.ip_time_stamp (f ip) = PolyLang.ip_time_stamp ip) -&gt;
-    Sorted PolyLang.instr_point_sched_le ipl -&gt;
-    Sorted PolyLang.instr_point_sched_le (List.map f ipl).
-Proof.
-  intros f ipl Hts Hsorted.
-  induction Hsorted.
-  - simpl.
-    constructor.
-  - simpl.
-    constructor.
-    + eapply IHHsorted.
-      intros ip&#x27; Hip&#x27;.
-      eapply Hts.
-      right.
-      exact Hip&#x27;.
-    + eapply HdRel_sched_map_time_stamp_preserved.
-      * intros ip&#x27; Hip&#x27;.
-        eapply Hts.
-        exact Hip&#x27;.
-      * exact H.
-Qed.
-
-Lemma NoDup_map_value_unique :
-  forall (A B: Type) (f: A -&gt; B) xs x y,
-    NoDup (map f xs) -&gt;
-    In x xs -&gt;
-    In y xs -&gt;
-    f x = f y -&gt;
-    x = y.
-Proof.
-  exact ListExt.NoDup_map_value_unique.
-Qed.
-
-Lemma parent_sign_partition_complete_nodup_child_pairs :
-  forall cuts parent after_pis stmt_ws,
-    Refine.parent_sign_partition_complete cuts parent after_pis stmt_ws -&gt;
-    NoDup (Refine.child_pairs_for_parent parent after_pis stmt_ws).
-Proof.
-  intros cuts parent after_pis stmt_ws Hpart.
-  destruct Hpart as [Hnodup_signs _].
-  unfold Refine.child_signs_for_parent in Hnodup_signs.
-  eapply NoDup_map_inv.
-  exact Hnodup_signs.
-Qed.
-
-Lemma child_pair_unique_by_sign :
-  forall cuts parent after_pis stmt_ws pair1 pair2,
-    Refine.parent_sign_partition_complete cuts parent after_pis stmt_ws -&gt;
-    In pair1 (Refine.child_pairs_for_parent parent after_pis stmt_ws) -&gt;
-    In pair2 (Refine.child_pairs_for_parent parent after_pis stmt_ws) -&gt;
-    isw_piece_signs (snd pair1) = isw_piece_signs (snd pair2) -&gt;
-    pair1 = pair2.
-Proof.
-  intros cuts parent after_pis stmt_ws pair1 pair2 Hpart Hin1 Hin2 Hsign.
-  destruct Hpart as [Hnodup_signs _].
-  unfold Refine.child_signs_for_parent in Hnodup_signs.
-  eapply NoDup_map_value_unique; eauto.
-Qed.
-
-Lemma NoDup_filter_nth_error_unique :
-  forall (A: Type) (pred: A -&gt; bool) xs i j x,
-    NoDup (filter pred xs) -&gt;
-    nth_error xs i = Some x -&gt;
-    nth_error xs j = Some x -&gt;
-    pred x = true -&gt;
-    i = j.
-Proof.
-  exact ListExt.NoDup_filter_nth_error_unique.
-Qed.
-
-Lemma Forall2_nth_error_local :
-  forall A B (P: A -&gt; B -&gt; Prop) xs ys n x y,
-    Forall2 P xs ys -&gt;
-    nth_error xs n = Some x -&gt;
-    nth_error ys n = Some y -&gt;
-    P x y.
-Proof.
-  intros A B P xs ys n x y Hforall Hx Hy.
-  exact (Misc.Forall2_nth_error_both A B P n xs ys x y Hforall Hx Hy).
-Qed.
-
-Lemma domain_partition_complete_cut_shape_nth_domain_relation :
-  forall before after w before_pis after_pis before_varctxt before_vars after_varctxt after_vars
-         n after_pi stmt_w,
-    before = (before_pis, before_varctxt, before_vars) -&gt;
-    after = (after_pis, after_varctxt, after_vars) -&gt;
-    Refine.domain_partition_complete_cut_shape before after w -&gt;
-    nth_error after_pis n = Some after_pi -&gt;
-    nth_error w.(iw_stmt_witnesses) n = Some stmt_w -&gt;
-    Refine.stmt_domain_matches_cuts
-      before_pis w.(iw_cuts) after_pi stmt_w.
-Proof.
-  intros before after w before_pis after_pis before_varctxt before_vars after_varctxt after_vars
-         n after_pi stmt_w Hbefore Hafter Hcomplete Hnth_after Hnth_w.
-  subst before after.
-  unfold Refine.domain_partition_complete_cut_shape in Hcomplete.
-  destruct Hcomplete as [Hcut _].
-  unfold Refine.domain_partition_cut_shape in Hcut.
-  simpl in Hcut.
-  destruct Hcut as [_ [_ Hrel]].
-  eapply Forall2_nth_error_local; eauto.
-Qed.
-
-Lemma complete_cut_shape_after_point_signs_match :
-  forall before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w n after_pi stmt_w ip_after source piece_constrs,
-    Refine.domain_partition_complete_cut_shape
-      (before_pis, before_varctxt, before_vars)
-      (after_pis, after_varctxt, after_vars)
-      w -&gt;
-    nth_error after_pis n = Some after_pi -&gt;
-    nth_error w.(iw_stmt_witnesses) n = Some stmt_w -&gt;
-    nth_error before_pis (isw_parent_stmt stmt_w) = Some source -&gt;
-    Refine.iss_piece_constraints w.(iw_cuts) (isw_piece_signs stmt_w) = Some piece_constrs -&gt;
-    PolyLang.belongs_to ip_after after_pi -&gt;
-    isw_piece_signs stmt_w = Refine.iss_signs_for_point (PolyLang.ip_index ip_after) w.(iw_cuts).
-Proof.
-  intros before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w n after_pi stmt_w ip_after source piece_constrs
-         Hcomplete Hnth_after Hnth_w Hsource Hpiece Hbel.
-  pose proof
-    (domain_partition_complete_cut_shape_nth_domain_relation
-       (before_pis, before_varctxt, before_vars)
-       (after_pis, after_varctxt, after_vars)
-       w before_pis after_pis before_varctxt before_vars after_varctxt after_vars
-       n after_pi stmt_w eq_refl eq_refl Hcomplete Hnth_after Hnth_w)
-    as Hmatch.
-  pose proof
-    (proj1
-       (Refine.stmt_domain_matches_cuts_in_domain_iff
-          before_pis
-          w.(iw_cuts)
-          after_pi
-          stmt_w
-          (PolyLang.ip_index ip_after)
-          source
-          piece_constrs
-          Hmatch Hsource Hpiece))
-    as Hiff.
-  destruct Hbel as [Hdom_after _].
-  specialize (Hiff Hdom_after).
-  destruct Hiff as [_ Hsat_stmt].
-  assert (Hsat_expected :
-            Forall2
-              (Refine.point_satisfies_iss_cut (PolyLang.ip_index ip_after))
-              w.(iw_cuts)
-              (Refine.iss_signs_for_point (PolyLang.ip_index ip_after) w.(iw_cuts))).
-  {
-    apply Refine.iss_signs_for_point_satisfy.
-  }
-  symmetry.
-  eapply Refine.point_satisfies_iss_cuts_functional; eauto.
-Qed.
-
-Lemma nth_error_after_stmt_implies_child_pair :
-  forall after_pis stmt_ws n after_pi w parent,
-    nth_error after_pis n = Some after_pi -&gt;
-    nth_error stmt_ws n = Some w -&gt;
-    isw_parent_stmt w = parent -&gt;
-    In (after_pi, w) (Refine.child_pairs_for_parent parent after_pis stmt_ws).
-Proof.
-  intros after_pis stmt_ws n after_pi w parent Hafter Hw Hparent.
-  unfold Refine.child_pairs_for_parent, Refine.iss_pairs.
-  apply filter_In.
-  split.
-  - eapply nth_error_In.
-    eapply Sem.nth_error_combine_local; eauto.
-  - simpl.
-    apply Nat.eqb_eq.
-    exact Hparent.
-Qed.
-
-Lemma complete_cut_shape_after_point_signs_match_nth :
-  forall before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w n after_pi stmt_w ip_after,
-    Refine.domain_partition_complete_cut_shape
-      (before_pis, before_varctxt, before_vars)
-      (after_pis, after_varctxt, after_vars)
-      w -&gt;
-    nth_error after_pis n = Some after_pi -&gt;
-    nth_error w.(iw_stmt_witnesses) n = Some stmt_w -&gt;
-    PolyLang.belongs_to ip_after after_pi -&gt;
-    isw_piece_signs stmt_w =
-      Refine.iss_signs_for_point (PolyLang.ip_index ip_after) w.(iw_cuts).
-Proof.
-  intros before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w n after_pi stmt_w ip_after
-         Hcomplete Hnth_after Hnth_w Hbel.
-  pose proof
-    (domain_partition_complete_cut_shape_nth_domain_relation
-       (before_pis, before_varctxt, before_vars)
-       (after_pis, after_varctxt, after_vars)
-       w before_pis after_pis before_varctxt before_vars after_varctxt after_vars
-       n after_pi stmt_w eq_refl eq_refl Hcomplete Hnth_after Hnth_w)
-    as Hmatch.
-  destruct Hmatch as
-      [source [piece_constrs [Hsource [Hpiece _]]]].
-  eapply complete_cut_shape_after_point_signs_match; eauto.
-Qed.
-
-Local Lemma flattened_after_point_witness :
-  forall (after_pis : list PolyLang.PolyInstr)
-         (stmt_ws : list iss_stmt_witness)
-         (env : list Z)
-         (ipl : list PolyLang.InstrPoint)
-         (ip : PolyLang.InstrPoint),
-    PolyLang.flatten_instrs env after_pis ipl -&gt;
-    length after_pis = length stmt_ws -&gt;
-    In ip ipl -&gt;
-    exists after_pi stmt_w,
-      nth_error after_pis ip.(PolyLang.ip_nth) = Some after_pi /\
-      nth_error stmt_ws ip.(PolyLang.ip_nth) = Some stmt_w /\
-      PolyLang.belongs_to ip after_pi.
-Proof.
-  intros after_pis stmt_ws env ipl ip Hflat Hlength Hin.
-  pose proof Hflat as Hflat_all.
-  destruct Hflat as [_ [Hmembers _]].
-  destruct (proj1 (Hmembers ip) Hin)
-    as [after_pi [Hafter [_ [Hbelongs _]]]].
-  assert (Hstmt_range : (ip.(PolyLang.ip_nth) &lt; length stmt_ws)%nat).
-  {
-    rewrite &lt;- Hlength.
-    eapply PolyLang.flatten_instrs_ipl_n_lt_len; eauto.
-  }
-  destruct (nth_error stmt_ws ip.(PolyLang.ip_nth)) as [stmt_w|] eqn:Hstmt.
-  - exists after_pi, stmt_w.
-    split; [exact Hafter|].
-    split; [reflexivity|exact Hbelongs].
-  - apply nth_error_None in Hstmt. lia.
-Qed.
-
-Lemma before_of_after_point_injective_complete_cut_shape :
-  forall before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w env ipl_after ip1 ip2,
-    Refine.domain_partition_complete_cut_shape
-      (before_pis, before_varctxt, before_vars)
-      (after_pis, after_varctxt, after_vars)
-      w -&gt;
-    PolyLang.flatten_instrs env after_pis ipl_after -&gt;
-    In ip1 ipl_after -&gt;
-    In ip2 ipl_after -&gt;
-    Sem.before_of_after_point w.(iw_stmt_witnesses) ip1 =
-    Sem.before_of_after_point w.(iw_stmt_witnesses) ip2 -&gt;
-    ip1 = ip2.
-Proof.
-  intros before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w env ipl_after
-         [n1 idx1 tf1 ts1 instr1 depth1]
-         [n2 idx2 tf2 ts2 instr2 depth2]
-         Hcomplete Hflat Hin1 Hin2 Heq.
-  pose proof
-    (Refine.domain_partition_cut_shape_implies_shape
-       (before_pis, before_varctxt, before_vars)
-       (after_pis, after_varctxt, after_vars)
-       w
-       (proj1 Hcomplete))
-    as Hshape.
-  pose proof
-    (Refine.domain_partition_shape_stmt_witnesses_length
-       (before_pis, before_varctxt, before_vars)
-       (after_pis, after_varctxt, after_vars)
-       w Hshape)
-    as Hlen_stmt_ws.
-  destruct (flattened_after_point_witness
-              after_pis w.(iw_stmt_witnesses) env ipl_after
-              {|
-                PolyLang.ip_nth := n1;
-                PolyLang.ip_index := idx1;
-                PolyLang.ip_transformation := tf1;
-                PolyLang.ip_time_stamp := ts1;
-                PolyLang.ip_instruction := instr1;
-                PolyLang.ip_depth := depth1
-              |}
-              Hflat Hlen_stmt_ws Hin1)
-    as [after_pi1 [w1 [Hafter1 [Hw1 Hbel1]]]].
-  destruct (flattened_after_point_witness
-              after_pis w.(iw_stmt_witnesses) env ipl_after
-              {|
-                PolyLang.ip_nth := n2;
-                PolyLang.ip_index := idx2;
-                PolyLang.ip_transformation := tf2;
-                PolyLang.ip_time_stamp := ts2;
-                PolyLang.ip_instruction := instr2;
-                PolyLang.ip_depth := depth2
-              |}
-              Hflat Hlen_stmt_ws Hin2)
-    as [after_pi2 [w2 [Hafter2 [Hw2 Hbel2]]]].
-  simpl in Hafter1, Hw1, Hbel1, Hafter2, Hw2, Hbel2.
-  unfold Sem.before_of_after_point, Sem.before_parent_nth, Sem.set_ip_nth in Heq.
-  simpl in Heq.
-  rewrite Hw1, Hw2 in Heq.
-  simpl in Heq.
-  injection Heq as Hparent_eq Hidx_eq Htf_eq Hts_eq Hinstr_eq Hdepth_eq.
-  pose proof
-    (domain_partition_complete_cut_shape_nth_domain_relation
-       (before_pis, before_varctxt, before_vars)
-       (after_pis, after_varctxt, after_vars)
-       w before_pis after_pis before_varctxt before_vars after_varctxt after_vars
-       n1 after_pi1 w1 eq_refl eq_refl Hcomplete Hafter1 Hw1)
-    as Hmatch1.
-  pose proof
-    (domain_partition_complete_cut_shape_nth_domain_relation
-       (before_pis, before_varctxt, before_vars)
-       (after_pis, after_varctxt, after_vars)
-       w before_pis after_pis before_varctxt before_vars after_varctxt after_vars
-       n2 after_pi2 w2 eq_refl eq_refl Hcomplete Hafter2 Hw2)
-    as Hmatch2.
-  destruct Hmatch1 as [source1 [piece1 [Hsource1 [Hpiece1 _]]]].
-  destruct Hmatch2 as [source2 [piece2 [Hsource2 [Hpiece2 _]]]].
-  rewrite &lt;- Hparent_eq in Hsource2.
-  rewrite Hsource1 in Hsource2.
-  inversion Hsource2; subst source2.
-  clear Hsource2.
-  assert (Hpart :
-            Refine.parent_sign_partition_complete
-              w.(iw_cuts) (isw_parent_stmt w1) after_pis w.(iw_stmt_witnesses)).
-  {
-    unfold Refine.domain_partition_complete_cut_shape in Hcomplete.
-    destruct Hcomplete as [_ Hpart].
-    unfold Refine.cut_partition_complete in Hpart.
-    simpl in Hpart.
-    eapply Hpart; eauto.
-  }
-  assert (Hsign1 :
-            isw_piece_signs w1 =
-            Refine.iss_signs_for_point idx1 w.(iw_cuts)).
-  {
-    eapply
-      (complete_cut_shape_after_point_signs_match_nth
-         before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w n1 after_pi1 w1
-         {|
-           PolyLang.ip_nth := n1;
-           PolyLang.ip_index := idx1;
-           PolyLang.ip_transformation := tf1;
-           PolyLang.ip_time_stamp := ts1;
-           PolyLang.ip_instruction := instr1;
-           PolyLang.ip_depth := depth1
-         |}); eauto.
-  }
-  assert (Hsign2 :
-            isw_piece_signs w2 =
-            Refine.iss_signs_for_point idx2 w.(iw_cuts)).
-  {
-    eapply
-      (complete_cut_shape_after_point_signs_match_nth
-         before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w n2 after_pi2 w2
-         {|
-           PolyLang.ip_nth := n2;
-           PolyLang.ip_index := idx2;
-           PolyLang.ip_transformation := tf2;
-           PolyLang.ip_time_stamp := ts2;
-           PolyLang.ip_instruction := instr2;
-           PolyLang.ip_depth := depth2
-         |}); eauto.
-  }
-  rewrite &lt;- Hidx_eq in Hsign2.
-  assert (Hpair1_in :
-            In (after_pi1, w1)
-               (Refine.child_pairs_for_parent
-                  (isw_parent_stmt w1) after_pis w.(iw_stmt_witnesses))).
-  {
-    eapply nth_error_after_stmt_implies_child_pair; eauto.
-  }
-  assert (Hpair2_in :
-            In (after_pi2, w2)
-               (Refine.child_pairs_for_parent
-                  (isw_parent_stmt w1) after_pis w.(iw_stmt_witnesses))).
-  {
-    eapply nth_error_after_stmt_implies_child_pair; eauto.
-  }
-  assert (Hpair_eq : (after_pi1, w1) = (after_pi2, w2)).
-  {
-    eapply (child_pair_unique_by_sign
-              w.(iw_cuts)
-              (isw_parent_stmt w1)
-              after_pis
-              w.(iw_stmt_witnesses)
-              (after_pi1, w1)
-              (after_pi2, w2)); eauto.
-    transitivity (Refine.iss_signs_for_point idx1 w.(iw_cuts)).
-    - exact Hsign1.
-    - symmetry.
-      exact Hsign2.
-  }
-  assert (Hpair_nth1 :
-            nth_error (Refine.iss_pairs after_pis w.(iw_stmt_witnesses)) n1 =
-            Some (after_pi1, w1)).
-  {
-    eapply Sem.nth_error_combine_local; eauto.
-  }
-  assert (Hpair_nth2 :
-            nth_error (Refine.iss_pairs after_pis w.(iw_stmt_witnesses)) n2 =
-            Some (after_pi1, w1)).
-  {
-    rewrite Hpair_eq.
-    eapply Sem.nth_error_combine_local; eauto.
-  }
-  assert (Hnth_eq : n1 = n2).
-  {
-    assert (Hpairs_nodup :
-      NoDup
-        (filter
-           (fun pair =&gt;
-              Nat.eqb (isw_parent_stmt (snd pair))
-                      (isw_parent_stmt w1))
-           (Refine.iss_pairs after_pis w.(iw_stmt_witnesses)))).
-    {
-      pose proof
-        (parent_sign_partition_complete_nodup_child_pairs
-           w.(iw_cuts) (isw_parent_stmt w1)
-           after_pis w.(iw_stmt_witnesses) Hpart)
-        as Hchildren_nodup.
-      unfold Refine.child_pairs_for_parent in Hchildren_nodup.
-      exact Hchildren_nodup.
-    }
-    assert (Hparent_test :
-      (fun pair =&gt;
-         Nat.eqb (isw_parent_stmt (snd pair))
-                 (isw_parent_stmt w1))
-        (after_pi1, w1) = true).
-    {
-      simpl.
-      apply Nat.eqb_eq.
+    induction n as [|n IH]; intros l1 l2; simpl.
+    - reflexivity.
+    - rewrite IH.
+      rewrite lift_affine_list_app.
       reflexivity.
-    }
-    exact
-      (@NoDup_filter_nth_error_unique
-         (PolyLang.PolyInstr * iss_stmt_witness)
-         (fun pair =&gt;
-            Nat.eqb (isw_parent_stmt (snd pair))
-                    (isw_parent_stmt w1))
-         (Refine.iss_pairs after_pis w.(iw_stmt_witnesses))
-         n1 n2 (after_pi1, w1)
-         Hpairs_nodup Hpair_nth1 Hpair_nth2 Hparent_test).
-  }
-  subst n2.
-  subst idx2 tf2 ts2 instr2 depth2.
-  reflexivity.
 Qed.
 
-Lemma before_ipl_from_after_nodup_complete_cut_shape :
-  forall before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w env ipl_after,
-    Refine.domain_partition_complete_cut_shape
-      (before_pis, before_varctxt, before_vars)
-      (after_pis, after_varctxt, after_vars)
-      w -&gt;
-    PolyLang.flatten_instrs env after_pis ipl_after -&gt;
-    NoDup (Sem.before_ipl_from_after w.(iw_stmt_witnesses) ipl_after).
+Lemma lift_affine_list_n_succ:
+    forall n l,
+    lift_affine_list_n n (lift_affine_list l) =
+    lift_affine_list_n (S n) l.
 Proof.
-  intros before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w env ipl_after Hcomplete Hflat.
-  pose proof Hflat as Hflat_all.
-  destruct Hflat as [_ [_ [Hnodup _]]].
-  unfold Sem.before_ipl_from_after.
-  eapply NoDup_map_on_local.
-  - exact Hnodup.
-  - intros ip1 ip2 Hin1 Hin2 Heq.
-    eapply before_of_after_point_injective_complete_cut_shape; eauto.
+    induction n as [|n IH]; intros l; simpl.
+    - reflexivity.
+    - rewrite IH.
+      reflexivity.
 Qed.
 
-Lemma NoDup_np_eq_unique_implies_NoDupA :
-  forall ipl,
-    NoDup ipl -&gt;
-    (forall ip1 ip2,
-      In ip1 ipl -&gt;
-      In ip2 ipl -&gt;
-      PolyLang.np_eq ip1 ip2 -&gt;
-      ip1 = ip2) -&gt;
-    NoDupA PolyLang.np_eq ipl.
+Lemma lift_affine_satisfies_constraint:
+    forall i env aff,
+    satisfies_constraint (i :: env) (lift_affine aff) =
+    satisfies_constraint env aff.
 Proof.
-  intros ipl Hnodup Hunique.
-  eapply
-    (ListExt.NoDup_relation_unique_implies_NoDupA
-       _ PolyLang.np_eq ipl); eauto.
+    intros i env [v c].
+    unfold lift_affine.
+    unfold satisfies_constraint.
+    simpl.
+    rewrite Z.mul_0_r.
+    reflexivity.
 Qed.
 
-Lemma lex_compare_eq_same_length_implies_eq_local :
-  forall t1 t2,
-    lex_compare t1 t2 = Eq -&gt;
-    length t1 = length t2 -&gt;
-    t1 = t2.
+Lemma lift_affine_list_satisfies_constraint:
+    forall i env affs,
+    forallb (satisfies_constraint (i :: env)) (lift_affine_list affs) =
+    forallb (satisfies_constraint env) affs.
 Proof.
-  induction t1 as [|x t1 IH]; intros t2 Hcmp Hlen.
-  - destruct t2 as [|y t2].
-    + reflexivity.
-    + simpl in Hlen. discriminate.
-  - destruct t2 as [|y t2].
-    + simpl in Hlen. discriminate.
-    + simpl in Hcmp.
-      destruct (Z.compare x y) eqn:Hxy; try discriminate.
-      apply Z.compare_eq_iff in Hxy.
-      subst y.
-      f_equal.
+    intros i env affs.
+    induction affs as [|aff affs IH]; simpl.
+    - reflexivity.
+    - rewrite lift_affine_satisfies_constraint.
+      rewrite IH.
+      reflexivity.
+Qed.
+
+Lemma in_poly_lift_affine_list:
+    forall i env affs,
+    in_poly (i :: env) (lift_affine_list affs) = in_poly env affs.
+Proof.
+    intros i env affs.
+    unfold in_poly.
+    eapply lift_affine_list_satisfies_constraint.
+Qed.
+
+Lemma in_poly_lift_affine_list_n_app:
+    forall prefix suffix affs,
+    in_poly (prefix ++ suffix) (lift_affine_list_n (Datatypes.length prefix) affs) =
+    in_poly suffix affs.
+Proof.
+    induction prefix as [|x prefix IH]; intros suffix affs; simpl.
+    - reflexivity.
+    - rewrite in_poly_lift_affine_list.
       eapply IH.
-      * exact Hcmp.
-      * simpl in Hlen. lia.
 Qed.
 
-Lemma belongs_to_same_source_same_np_implies_eq :
-  forall source ip1 ip2,
-    PolyLang.belongs_to ip1 source -&gt;
-    PolyLang.belongs_to ip2 source -&gt;
-    length (PolyLang.ip_index ip1) = length (PolyLang.ip_index ip2) -&gt;
-    PolyLang.np_eq ip1 ip2 -&gt;
-    ip1 = ip2.
+Lemma lift_affine_eval:
+    forall i env aff,
+    dot_product (fst (lift_affine aff)) (i :: env) + snd (lift_affine aff) =
+    dot_product (fst aff) env + snd aff.
 Proof.
-  intros source
-         [n1 idx1 tf1 ts1 instr1 depth1]
-         [n2 idx2 tf2 ts2 instr2 depth2]
-         Hbel1 Hbel2 Hlen_eq Hnp.
-  unfold PolyLang.belongs_to in Hbel1, Hbel2.
-  unfold PolyLang.np_eq in Hnp.
-  simpl in *.
-  destruct Hbel1 as [_ [Htf1 [Hts1 [Hinstr1 Hdepth1]]]].
-  destruct Hbel2 as [_ [Htf2 [Hts2 [Hinstr2 Hdepth2]]]].
-  destruct Hnp as [Hnth Hidx_cmp].
-  eapply lex_compare_eq_same_length_implies_eq_local in Hidx_cmp.
-  2: exact Hlen_eq.
-  subst n2.
-  subst idx2.
-  rewrite &lt;- Htf1 in Htf2.
-  rewrite &lt;- Hts1 in Hts2.
-  rewrite &lt;- Hinstr1 in Hinstr2.
-  rewrite &lt;- Hdepth1 in Hdepth2.
-  subst tf2 ts2 instr2 depth2.
-  reflexivity.
+    intros i env [v c].
+    unfold lift_affine.
+    simpl.
+    lia.
 Qed.
 
-Lemma before_ipl_from_after_member_np_eq_implies_eq :
-  forall before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         stmt_ws env ipl_after ip1 ip2,
-    Refine.domain_partition_refinement
-      (before_pis, before_varctxt, before_vars)
-      (after_pis, after_varctxt, after_vars)
-      stmt_ws -&gt;
-    PolyLang.flatten_instrs env after_pis ipl_after -&gt;
-    In ip1 (Sem.before_ipl_from_after stmt_ws ipl_after) -&gt;
-    In ip2 (Sem.before_ipl_from_after stmt_ws ipl_after) -&gt;
-    PolyLang.np_eq ip1 ip2 -&gt;
-    ip1 = ip2.
+Lemma lift_affine_list_affine_product:
+    forall i env affs,
+    affine_product (lift_affine_list affs) (i :: env) =
+    affine_product affs env.
 Proof.
-  intros before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         stmt_ws env ipl_after ip1 ip2
-         Href Hflat Hin1 Hin2 Hnp.
-  destruct
-    (Sem.before_ipl_from_after_forward
-       before_pis before_varctxt before_vars
-       after_pis after_varctxt after_vars
-       stmt_ws env ipl_after ip1
-       Href Hflat Hin1)
-    as [source1 [Hsource1 [Hpref1 [Hbel1 Hlen1]]]].
-  destruct
-    (Sem.before_ipl_from_after_forward
-       before_pis before_varctxt before_vars
-       after_pis after_varctxt after_vars
-       stmt_ws env ipl_after ip2
-       Href Hflat Hin2)
-    as [source2 [Hsource2 [Hpref2 [Hbel2 Hlen2]]]].
-  unfold PolyLang.np_eq in Hnp.
-  destruct Hnp as [Hnth Hidx].
-  rewrite &lt;- Hnth in Hsource2.
-  rewrite Hsource1 in Hsource2.
-  inversion Hsource2; subst source2.
-  eapply belongs_to_same_source_same_np_implies_eq; eauto.
-  rewrite Hlen1, Hlen2.
-  reflexivity.
-  unfold PolyLang.np_eq.
-  split; assumption.
+    intros i env affs.
+    induction affs as [|aff affs IH]; simpl.
+    - reflexivity.
+    - rewrite lift_affine_eval.
+      rewrite IH.
+      reflexivity.
 Qed.
 
-Theorem flatten_instrs_after_implies_before_exists_perm_complete_cut_shape :
-  forall before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w env ipl_after,
-    Refine.domain_partition_complete_cut_shape
-      (before_pis, before_varctxt, before_vars)
-      (after_pis, after_varctxt, after_vars)
-      w -&gt;
-    PolyLang.flatten_instrs env after_pis ipl_after -&gt;
-    exists ipl_before,
-      PolyLang.flatten_instrs env before_pis ipl_before /\
-      Permutation
-        ipl_before
-        (Sem.before_ipl_from_after w.(iw_stmt_witnesses) ipl_after).
+Lemma affine_product_lift_affine_list_n_app:
+    forall prefix suffix affs,
+    affine_product (lift_affine_list_n (Datatypes.length prefix) affs) (prefix ++ suffix) =
+    affine_product affs suffix.
 Proof.
-  intros before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w env ipl_after Hcomplete Hflat_after.
-  set (raw_before :=
-         Sem.before_ipl_from_after w.(iw_stmt_witnesses) ipl_after).
-  set (sorted_before :=
-         SelectionSort instr_point_np_ltb
-                       instr_point_np_eqb
-                       raw_before).
-  exists sorted_before.
-  split.
-  - assert (Hperm_before : Permutation raw_before sorted_before).
-    {
-      subst sorted_before.
-      eapply selection_sort_perm.
-    }
-    assert (Hnodup_raw : NoDup raw_before).
-    {
-      subst raw_before.
-      eapply before_ipl_from_after_nodup_complete_cut_shape; eauto.
-    }
-    assert (Hnodup_sorted : NoDup sorted_before).
-    {
-      eapply Permutation_NoDup; eauto.
-    }
-    pose proof
-      (Refine.domain_partition_refinement_from_complete_cut_shape
-         (before_pis, before_varctxt, before_vars)
-         (after_pis, after_varctxt, after_vars)
-         w Hcomplete)
-      as Href.
-    assert (Hmem_sorted :
-              forall ip,
-                In ip sorted_before &lt;-&gt;
-                exists source,
-                  nth_error before_pis (PolyLang.ip_nth ip) = Some source /\
-                  firstn (length env) (PolyLang.ip_index ip) = env /\
-                  PolyLang.belongs_to ip source /\
-                  length (PolyLang.ip_index ip) =
-                    (length env + PolyLang.pi_depth source)%nat).
-    {
-      intros ip.
-      split; intro Hin.
-      - eapply Sem.before_ipl_from_after_forward; eauto.
-        eapply Permutation_in.
-        + eapply Permutation_sym.
-          exact Hperm_before.
-        + exact Hin.
-      - destruct Hin as [source [Hsource [Hpref [Hbel Hlen]]]].
-        eapply Permutation_in.
-        + exact Hperm_before.
-        + eapply Sem.before_ipl_from_after_backward; eauto.
-    }
-    assert (HnodupA_sorted : NoDupA PolyLang.np_eq sorted_before).
-    {
-      eapply NoDup_np_eq_unique_implies_NoDupA; eauto.
-      intros ip1 ip2 Hin1 Hin2 Hnp.
-      eapply before_ipl_from_after_member_np_eq_implies_eq; eauto.
-      - eapply Permutation_in.
-        + eapply Permutation_sym. exact Hperm_before.
-        + exact Hin1.
-      - eapply Permutation_in.
-        + eapply Permutation_sym. exact Hperm_before.
-        + exact Hin2.
-    }
-    assert (Hsortedb :
-              Sorted_b
-                (combine_leb instr_point_np_ltb
-                             instr_point_np_eqb)
-                sorted_before).
-    {
-      subst sorted_before.
-      eapply selection_sort_sorted.
-      - eapply instr_point_np_ltb_trans.
-      - eapply instr_point_np_eqb_trans.
-      - eapply instr_point_np_eqb_refl.
-      - eapply instr_point_np_eqb_symm.
-      - eapply instr_point_np_cmp_total.
-      - eapply instr_point_np_eqb_ltb_implies_ltb.
-      - eapply instr_point_np_ltb_eqb_implies_ltb.
-    }
+    induction prefix as [|x prefix IH]; intros suffix affs; simpl.
+    - reflexivity.
+    - rewrite lift_affine_list_affine_product.
+      rewrite IH.
+      reflexivity.
+Qed.
+
+Lemma dot_product_repeat_zero_left:
+    forall n l,
+    dot_product (repeat 0%Z n) l = 0%Z.
+Proof.
+    exact Linalg.dot_product_repeat_zero_left.
+Qed.
+
+Lemma affine_product_loop_row:
+    forall cols i env,
+    affine_product [((1%Z :: repeat 0%Z cols), 0%Z)] (i :: env) = [i].
+Proof.
+    intros cols i env.
+    simpl.
+    rewrite dot_product_repeat_zero_left.
+    f_equal.
+    lia.
+Qed.
+
+Lemma affine_product_app:
+    forall m1 m2 p,
+    affine_product (m1 ++ m2) p = affine_product m1 p ++ affine_product m2 p.
+Proof.
+    intros m1 m2 p.
+    unfold affine_product.
+    rewrite map_app.
+    reflexivity.
+Qed.
+
+Lemma affine_product_sched_prefix_seq:
+    forall sched cols env pos,
+    affine_product (sched ++ [(repeat 0%Z cols, pos)]) env =
+    affine_product sched env ++ [pos].
+Proof.
+    intros sched cols env pos.
+    rewrite affine_product_app.
+    simpl.
+    rewrite dot_product_repeat_zero_left.
+    reflexivity.
+Qed.
+
+Lemma affine_product_sched_prefix_loop:
+    forall sched cols i env,
+    affine_product (lift_affine_list sched ++ [((1%Z :: repeat 0%Z cols), 0%Z)]) (i :: env) =
+    affine_product sched env ++ [i].
+Proof.
+    intros sched cols i env.
+    rewrite affine_product_app.
+    rewrite lift_affine_list_affine_product.
+    rewrite affine_product_loop_row.
+    reflexivity.
+Qed.
+
+Lemma in_poly_lift_app_cons2_inv:
+    forall i env constrs c1 c2,
+    in_poly (i :: env) (lift_affine_list constrs ++ [c1; c2]) = true -&gt;
+    in_poly env constrs = true /\
+    satisfies_constraint (i :: env) c1 = true /\
+    satisfies_constraint (i :: env) c2 = true.
+Proof.
+    intros i env constrs c1 c2 Hin.
+    unfold in_poly in Hin.
+    rewrite forallb_app in Hin.
+    eapply andb_prop in Hin.
+    destruct Hin as [Hlift Htail].
+    simpl in Htail.
+    eapply andb_prop in Htail.
+    destruct Htail as [Hc1 Hrest].
+    eapply andb_prop in Hrest.
+    destruct Hrest as [Hc2 _].
     split.
-    + intros ip Hin.
-      destruct (Hmem_sorted ip) as [Hmem_ip _].
-      apply Hmem_ip in Hin.
-      destruct Hin as [source [Hsource [Hpref [Hbel Hlen]]]].
-      exact Hpref.
-    + split.
-      * exact Hmem_sorted.
-      * split.
-        -- exact Hnodup_sorted.
-        -- eapply sortedb_instr_point_np_implies_sorted_np; eauto.
-  - eapply Permutation_sym.
-    subst sorted_before.
-    eapply selection_sort_perm.
+    - unfold in_poly.
+      rewrite lift_affine_list_satisfies_constraint in Hlift.
+      exact Hlift.
+    - split; auto.
 Qed.
 
-Theorem iss_complete_cut_shape_to_before_poly_correct :
-  forall env before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w st1 st2,
-    Refine.domain_partition_complete_cut_shape
-      (before_pis, before_varctxt, before_vars)
-      (after_pis, after_varctxt, after_vars)
-      w -&gt;
-    PolyLang.poly_instance_list_semantics
-      env
-      (after_pis, after_varctxt, after_vars)
-      st1 st2 -&gt;
-    exists st2&#x27;,
-      PolyLang.poly_instance_list_semantics
-        env
-        (before_pis, before_varctxt, before_vars)
-        st1 st2&#x27; /\
-      Instr.State.eq st2 st2&#x27;.
+Definition normalize_affine_rev (cols: nat) (aff: list Z * Z): (list Z * Z) :=
+    let (v, c) := aff in (rev (resize cols v), c).
+
+Definition normalize_affine_list_rev (cols: nat) (affs: list (list Z * Z)) :=
+    map (normalize_affine_rev cols) affs.
+
+Lemma normalize_affine_satisfies_constraint:
+    forall cols env aff,
+    Datatypes.length env = cols -&gt;
+    satisfies_constraint env (normalize_affine cols aff) =
+    satisfies_constraint env aff.
 Proof.
-  intros env before_pis before_varctxt before_vars
-         after_pis after_varctxt after_vars
-         w st1 st2 Hcomplete Hsem.
-  inversion Hsem as
-      [env&#x27; pprog pis varctxt vars st1&#x27; st2&#x27;
-       ipl_after sorted_after
-       Hpprog Hflat_after Hperm_after Hsorted_after Hlist_after];
-    subst.
-  inversion Hpprog; subst; clear Hpprog.
-  destruct
-    (flatten_instrs_after_implies_before_exists_perm_complete_cut_shape
-       before_pis before_varctxt before_vars
-       pis varctxt vars
-       w env ipl_after
-       Hcomplete Hflat_after)
-    as [ipl_before [Hflat_before Hperm_before]].
-  set (sorted_before :=
-         map (Sem.before_of_after_point w.(iw_stmt_witnesses)) sorted_after).
-  assert (Hlist_before :
-            PolyLang.ILSema.instr_point_list_semantics
-              sorted_before st1 st2).
-  {
-    subst sorted_before.
-    eapply instr_point_list_semantics_map_preserved.
-    - intros ip s1 s2 Hin_sorted.
-      symmetry.
-      apply Sem.point_semantics_before_of_after_preserved.
-    - exact Hlist_after.
-  }
-  assert (Hsorted_before :
-            Sorted PolyLang.instr_point_sched_le sorted_before).
-  {
-    subst sorted_before.
-    eapply sorted_sched_map_time_stamp_preserved.
-    - intros ip Hin_sorted.
-      eapply Sem.before_of_after_point_time_stamp_preserved.
-    - exact Hsorted_after.
-  }
-  assert (Hperm_before_sorted :
-            Permutation ipl_before sorted_before).
-  {
-    subst sorted_before.
-    eapply Permutation_trans.
-    - exact Hperm_before.
-    - eapply Permutation_map.
-      exact Hperm_after.
-  }
-  exists st2.
-  split.
-  - eapply PolyLang.PolyPointListSema
-      with (ipl := ipl_before) (sorted_ipl := sorted_before).
-    + reflexivity.
-    + exact Hflat_before.
-    + exact Hperm_before_sorted.
-    + exact Hsorted_before.
-    + exact Hlist_before.
-  - eapply Instr.State.eq_refl.
+    intros cols env [v c] Hlen.
+    unfold normalize_affine. simpl.
+    unfold satisfies_constraint. simpl.
+    rewrite &lt;- Hlen.
+    rewrite dot_product_resize_right.
+    reflexivity.
 Qed.
 
-Theorem iss_complete_cut_shape_to_before_correct :
-  forall before after w st1 st2,
-    Refine.domain_partition_complete_cut_shape before after w -&gt;
-    PolyLang.instance_list_semantics after st1 st2 -&gt;
-    exists st2&#x27;,
-      PolyLang.instance_list_semantics before st1 st2&#x27; /\
-      Instr.State.eq st2 st2&#x27;.
+Lemma normalize_affine_list_satisfies_constraint:
+    forall cols env affs,
+    Datatypes.length env = cols -&gt;
+    forallb (satisfies_constraint env) (normalize_affine_list cols affs) =
+    forallb (satisfies_constraint env) affs.
 Proof.
-  intros before after w st1 st2 Hcomplete Hsem.
-  destruct before as [[before_pis before_varctxt] before_vars].
-  destruct after as [[after_pis after_varctxt] after_vars].
-  unfold Refine.domain_partition_complete_cut_shape in Hcomplete.
-  destruct Hcomplete as [Hcut_shape Hcut_complete].
-  pose proof
-    (Refine.domain_partition_cut_shape_implies_shape
-       (before_pis, before_varctxt, before_vars)
-       (after_pis, after_varctxt, after_vars)
-       w Hcut_shape)
-    as Hshape.
-  unfold Refine.domain_partition_shape_with_witness in Hshape.
-  unfold Refine.domain_partition_shape in Hshape.
-  simpl in Hshape.
-  destruct Hshape as [Hctxt_eq0 [Hvars_eq0 [_ _]]].
-  pose proof Hctxt_eq0 as Hctxt_eq.
-  pose proof Hvars_eq0 as Hvars_eq.
-  inversion Hsem as
-      [pprog pis varctxt vars env st1&#x27; st2&#x27;
-       Hpprog Hcompat Halias Hinit Hpoly];
-    subst.
-  inversion Hpprog; subst; clear Hpprog.
-  destruct
-    (iss_complete_cut_shape_to_before_poly_correct
-       env before_pis varctxt vars
-       pis varctxt vars
-       w st1 st2
-       (conj Hcut_shape Hcut_complete)
-       Hpoly)
-    as [st2&#x27; [Hpoly_before Heq]].
-  exists st2&#x27;.
-  split.
-  - eapply PolyLang.PIPSemaIntro.
-    + reflexivity.
-    + exact Hcompat.
-    + exact Halias.
-    + exact Hinit.
-    + exact Hpoly_before.
-  - exact Heq.
+    intros cols env affs Hlen.
+    induction affs as [|aff affs IH]; simpl.
+    - reflexivity.
+    - rewrite normalize_affine_satisfies_constraint with (cols:=cols) (env:=env) (aff:=aff) by auto.
+      f_equal. exact IH.
 Qed.
 
-End ISSCutSemantics.
+Lemma dot_product_rev:
+    forall xs ys,
+    Datatypes.length xs = Datatypes.length ys -&gt;
+    dot_product (rev xs) (rev ys) = dot_product xs ys.
+Proof.
+    induction xs as [|x xs IH]; intros ys Hlen.
+    - destruct ys; simpl in *; [reflexivity|lia].
+    - destruct ys as [|y ys]; simpl in *; [lia|].
+      inversion Hlen as [Hlen&#x27;].
+      rewrite !dot_product_app.
+      2: rewrite !rev_length; simpl; lia.
+      simpl.
+      rewrite IH; [lia|exact Hlen&#x27;].
+Qed.
+
+Lemma dot_product_env_rev_vec:
+    forall env v,
+    Datatypes.length env = Datatypes.length v -&gt;
+    dot_product env (rev v) = dot_product (rev env) v.
+Proof.
+    intros env v Hlen.
+    pose proof (dot_product_rev env (rev v)) as Hrev.
+    assert (Datatypes.length env = Datatypes.length (rev v)) as Hlen&#x27;.
+    { rewrite rev_length; exact Hlen. }
+    specialize (Hrev Hlen&#x27;).
+    rewrite rev_involutive in Hrev.
+    symmetry.
+    exact Hrev.
+Qed.
+
+Lemma normalize_affine_rev_eval:
+    forall cols env aff,
+    Datatypes.length env = cols -&gt;
+    dot_product (fst (normalize_affine_rev cols aff)) env + snd (normalize_affine_rev cols aff) =
+    dot_product (fst aff) (rev env) + snd aff.
+Proof.
+    intros cols env [v c] Hlen.
+    unfold normalize_affine_rev. simpl.
+    rewrite dot_product_commutative.
+    rewrite dot_product_env_rev_vec.
+    2: rewrite resize_length; exact Hlen.
+    rewrite dot_product_commutative.
+    assert (Datatypes.length (rev env) = cols) as Hlenrev.
+    { rewrite rev_length; exact Hlen. }
+    rewrite &lt;- Hlenrev at 1.
+    rewrite dot_product_resize_left.
+    lia.
+Qed.
+
+Lemma normalize_affine_list_rev_affine_product:
+    forall cols env affs,
+    Datatypes.length env = cols -&gt;
+    affine_product (normalize_affine_list_rev cols affs) env = affine_product affs (rev env).
+Proof.
+    intros cols env affs Hlen.
+    induction affs as [|aff affs IH]; simpl.
+    - reflexivity.
+    - f_equal.
+      + eapply normalize_affine_rev_eval; eauto.
+      + exact IH.
+Qed.
+
+Lemma normalize_affine_rev_satisfies_constraint:
+    forall cols env aff,
+    Datatypes.length env = cols -&gt;
+    satisfies_constraint env (normalize_affine_rev cols aff) =
+    satisfies_constraint (rev env) aff.
+Proof.
+    intros cols env [v c] Hlen.
+    unfold normalize_affine_rev. simpl.
+    unfold satisfies_constraint. simpl.
+    rewrite dot_product_env_rev_vec.
+    2: rewrite resize_length; exact Hlen.
+    rewrite dot_product_commutative.
+    assert (Datatypes.length (rev env) = cols) as Hlenrev.
+    { rewrite rev_length; exact Hlen. }
+    rewrite &lt;- Hlenrev at 1.
+    rewrite dot_product_resize_left.
+    rewrite dot_product_commutative.
+    reflexivity.
+Qed.
+
+Lemma normalize_affine_list_rev_satisfies_constraint:
+    forall cols env affs,
+    Datatypes.length env = cols -&gt;
+    forallb (satisfies_constraint env) (normalize_affine_list_rev cols affs) =
+    forallb (satisfies_constraint (rev env)) affs.
+Proof.
+    intros cols env affs Hlen.
+    induction affs as [|aff affs IH]; simpl.
+    - reflexivity.
+    - rewrite normalize_affine_rev_satisfies_constraint with (cols:=cols) (env:=env) (aff:=aff) by auto.
+      f_equal. exact IH.
+Qed.
+
+Lemma exprlist_to_aff_rev_normalized_correct:
+    forall es env cols tf,
+    exprlist_to_aff es cols = Okk tf -&gt;
+    Datatypes.length env = cols -&gt;
+    affine_product (normalize_affine_list_rev cols tf) env = map (Loop.eval_expr (rev env)) es.
+Proof.
+    intros es env cols tf Htf Hlen.
+    rewrite normalize_affine_list_rev_affine_product with (cols:=cols) (env:=env) (affs:=tf); auto.
+    symmetry.
+    eapply exprlist_to_aff_correct; eauto.
+    rewrite rev_length; exact Hlen.
+Qed.
+
+Definition resolve_access_functions
+    (instr: Instr.t) : option (list AccessFunction * list AccessFunction) :=
+    let empty := (@nil AccessFunction) in
+    match PolIRs.Instr.waccess instr, PolIRs.Instr.raccess instr with
+    | Some w, Some r =&gt;
+        if PolIRs.Instr.access_function_checker w r instr
+        then Some (w, r)
+        else None
+    | Some w, None =&gt;
+        if PolIRs.Instr.access_function_checker w empty instr
+        then Some (w, empty)
+        else None
+    | None, Some r =&gt;
+        if PolIRs.Instr.access_function_checker empty r instr
+        then Some (empty, r)
+        else None
+    | None, None =&gt;
+        if PolIRs.Instr.access_function_checker empty empty instr
+        then Some (empty, empty)
+        else None
+    end.
+
+Definition make_le_constr (aff1 aff2: list Z * Z): list Z * Z := 
+    let (aff1, c1) := aff1 in 
+    let (aff2, c2) := aff2 in 
+    (add_vector aff1 (map Z.opp aff2), c2 - c1).
+
+Example test_make_le_constr_1:
+    make_le_constr ([1%Z; -1%Z], 10%Z) ([2%Z; -1%Z; 1%Z], 10%Z) 
+    = ([-1%Z; 0%Z; -1%Z], 0%Z).
+Proof. reflexivity. Qed.
+ 
+Example test_make_le_constr_2:
+    make_le_constr ([1%Z; -1%Z], 10%Z) ([2%Z; -1%Z; 1%Z], 20%Z) 
+    = ([-1%Z; 0%Z; -1%Z], 10%Z).
+Proof. reflexivity. Qed.
+
+Definition make_ge_constr (aff1 aff2: list Z * Z): list Z * Z := 
+    let (aff1, c1) := aff1 in 
+    let (aff2, c2) := aff2 in 
+    (add_vector (map Z.opp aff1) aff2, c1 - c2).
+
+Example test_make_ge_constr:
+    make_ge_constr ([1%Z; -1%Z], 10%Z) ([2%Z; -1%Z; 1%Z], 10%Z) 
+    = ([1%Z; 0%Z; 1%Z], 0%Z).
+Proof. reflexivity. Qed.
+
+Lemma dot_product_opp_right:
+    forall p v,
+    dot_product p (map Z.opp v) = Z.opp (dot_product p v).
+Proof.
+  exact LinalgExt.dot_product_vector_opp_r.
+Qed.
+
+Lemma make_le_constr_correct:
+    forall env aff1 aff2,
+    satisfies_constraint env (make_le_constr aff1 aff2) = true &lt;-&gt;
+    let (v1, c1) := aff1 in
+    let (v2, c2) := aff2 in
+    (dot_product env v1 + c1 &lt;= dot_product env v2 + c2)%Z.
+Proof.
+    intros env [v1 c1] [v2 c2]. simpl.
+    unfold satisfies_constraint. simpl.
+    rewrite add_vector_dot_product_distr_right.
+    rewrite dot_product_opp_right.
+    rewrite Z.leb_le.
+    lia.
+Qed.
+
+Lemma make_ge_constr_correct:
+    forall env aff1 aff2,
+    satisfies_constraint env (make_ge_constr aff1 aff2) = true &lt;-&gt;
+    let (v1, c1) := aff1 in
+    let (v2, c2) := aff2 in
+    (dot_product env v2 + c2 &lt;= dot_product env v1 + c1)%Z.
+Proof.
+    intros env [v1 c1] [v2 c2]. simpl.
+    unfold satisfies_constraint. simpl.
+    rewrite add_vector_dot_product_distr_right.
+    rewrite dot_product_opp_right.
+    rewrite Z.leb_le.
+    lia.
+Qed.
+
+Lemma andb_true_r_local:
+    forall b, (b &amp;&amp; true)%bool = b.
+Proof.
+    exact andb_true_r.
+Qed.
+
+Lemma andb_true_iff_local:
+    forall b1 b2, (b1 &amp;&amp; b2)%bool = true &lt;-&gt; b1 = true /\ b2 = true.
+Proof.
+    exact andb_true_iff.
+Qed.
+
+
+(** test to constraint *)
+Fixpoint test_to_aff (tst: PolIRs.Loop.test): result (list (list Z * Z)) := 
+    match tst with 
+    | PolIRs.Loop.LE e1 e2 =&gt; 
+        match (expr_to_aff e1), (expr_to_aff e2) with 
+        | Okk aff1, Okk aff2 =&gt; 
+            Okk [make_le_constr aff1 aff2]
+        | _, _ =&gt; Err &quot;Test to aff failed&quot;%string
+        end
+    | PolIRs.Loop.EQ e1 e2 =&gt; 
+        match (expr_to_aff e1), (expr_to_aff e2) with 
+        | Okk aff1, Okk aff2 =&gt; 
+            Okk [make_le_constr aff1 aff2; make_ge_constr aff1 aff2]
+        | _, _ =&gt; Err &quot;Test to aff failed&quot;%string
+        end
+    | PolIRs.Loop.And tst1 tst2 =&gt; 
+        match (test_to_aff tst1), (test_to_aff tst2) with 
+        | Okk aff1, Okk aff2 =&gt; 
+            Okk (aff1 ++ aff2)
+        | _, _ =&gt; Err &quot;Test to aff failed&quot;%string
+        end
+    | _ =&gt; Err &quot;Test to aff failed&quot;%string
+    end.
+
+Lemma test_to_aff_sound:
+    forall tst env constrs,
+    test_to_aff tst = Okk constrs -&gt;
+    Loop.eval_test env tst = true -&gt;
+    forallb (satisfies_constraint env) constrs = true.
+Proof.
+    induction tst as [e1 e2|e1 e2|tst1 IH1 tst2 IH2|tst1 IH1 tst2 IH2|tst IH|b];
+      intros env constrs Htst Heval; simpl in *; try discriminate.
+    - destruct (expr_to_aff e1) as [[v1 c1]|msg1] eqn:He1; try discriminate.
+      destruct (expr_to_aff e2) as [[v2 c2]|msg2] eqn:He2; try discriminate.
+      inv Htst.
+      apply Z.leb_le in Heval.
+      pose proof (expr_to_aff_correct e1 env (v1, c1) v1 c1 He1 eq_refl) as Hv1.
+      pose proof (expr_to_aff_correct e2 env (v2, c2) v2 c2 He2 eq_refl) as Hv2.
+      rewrite Hv1 in Heval. rewrite Hv2 in Heval.
+      simpl. rewrite andb_true_r_local.
+      eapply (proj2 (make_le_constr_correct env (v1, c1) (v2, c2))).
+      lia.
+    - destruct (expr_to_aff e1) as [[v1 c1]|msg1] eqn:He1; try discriminate.
+      destruct (expr_to_aff e2) as [[v2 c2]|msg2] eqn:He2; try discriminate.
+      inv Htst.
+      apply Z.eqb_eq in Heval.
+      pose proof (expr_to_aff_correct e1 env (v1, c1) v1 c1 He1 eq_refl) as Hv1.
+      pose proof (expr_to_aff_correct e2 env (v2, c2) v2 c2 He2 eq_refl) as Hv2.
+      rewrite Hv1 in Heval. rewrite Hv2 in Heval.
+      simpl. rewrite andb_true_r_local.
+      rewrite andb_true_iff_local. split.
+      + eapply (proj2 (make_le_constr_correct env (v1, c1) (v2, c2))). lia.
+      + eapply (proj2 (make_ge_constr_correct env (v1, c1) (v2, c2))). lia.
+    - destruct (test_to_aff tst1) as [cs1|msg1] eqn:H1; try discriminate.
+      destruct (test_to_aff tst2) as [cs2|msg2] eqn:H2; try discriminate.
+      inv Htst.
+      apply andb_true_iff_local in Heval. destruct Heval as [Hv1 Hv2].
+      rewrite forallb_app. rewrite andb_true_iff_local. split.
+      + eapply IH1; eauto.
+      + eapply IH2; eauto.
+Qed.
+
+Lemma test_to_aff_complete:
+    forall tst env constrs,
+    test_to_aff tst = Okk constrs -&gt;
+    forallb (satisfies_constraint env) constrs = true -&gt;
+    Loop.eval_test env tst = true.
+Proof.
+    induction tst as [e1 e2|e1 e2|tst1 IH1 tst2 IH2|tst1 IH1 tst2 IH2|tst IH|b];
+      intros env constrs Htst Hsat; simpl in *; try discriminate.
+    - destruct (expr_to_aff e1) as [[v1 c1]|msg1] eqn:He1; try discriminate.
+      destruct (expr_to_aff e2) as [[v2 c2]|msg2] eqn:He2; try discriminate.
+      inv Htst.
+      simpl in Hsat.
+      rewrite andb_true_r_local in Hsat.
+      eapply (proj1 (make_le_constr_correct env (v1, c1) (v2, c2))) in Hsat.
+      eapply Z.leb_le.
+      pose proof (expr_to_aff_correct e1 env (v1, c1) v1 c1 He1 eq_refl) as Hv1.
+      pose proof (expr_to_aff_correct e2 env (v2, c2) v2 c2 He2 eq_refl) as Hv2.
+      rewrite Hv1, Hv2.
+      exact Hsat.
+    - destruct (expr_to_aff e1) as [[v1 c1]|msg1] eqn:He1; try discriminate.
+      destruct (expr_to_aff e2) as [[v2 c2]|msg2] eqn:He2; try discriminate.
+      inv Htst.
+      simpl in Hsat.
+      rewrite andb_true_r_local in Hsat.
+      eapply andb_true_iff_local in Hsat.
+      destruct Hsat as [Hle Hge].
+      eapply (proj1 (make_le_constr_correct env (v1, c1) (v2, c2))) in Hle.
+      eapply (proj1 (make_ge_constr_correct env (v1, c1) (v2, c2))) in Hge.
+      eapply Z.eqb_eq.
+      pose proof (expr_to_aff_correct e1 env (v1, c1) v1 c1 He1 eq_refl) as Hv1.
+      pose proof (expr_to_aff_correct e2 env (v2, c2) v2 c2 He2 eq_refl) as Hv2.
+      rewrite Hv1, Hv2.
+      lia.
+    - destruct (test_to_aff tst1) as [cs1|msg1] eqn:H1; try discriminate.
+      destruct (test_to_aff tst2) as [cs2|msg2] eqn:H2; try discriminate.
+      inv Htst.
+      rewrite forallb_app in Hsat.
+      eapply andb_true_iff_local in Hsat.
+      destruct Hsat as [Hs1 Hs2].
+      simpl.
+      specialize (IH1 env cs1 eq_refl Hs1).
+      specialize (IH2 env cs2 eq_refl Hs2).
+      rewrite IH1.
+      rewrite IH2.
+      reflexivity.
+Qed.
+
+Lemma test_to_aff_sound_normalized:
+    forall tst env cols constrs,
+    test_to_aff tst = Okk constrs -&gt;
+    Loop.eval_test env tst = true -&gt;
+    Datatypes.length env = cols -&gt;
+    forallb (satisfies_constraint env) (normalize_affine_list cols constrs) = true.
+Proof.
+    intros tst env cols constrs Htst Heval Hlen.
+    rewrite normalize_affine_list_satisfies_constraint with (cols:=cols) (env:=env) (affs:=constrs); auto.
+    eapply test_to_aff_sound; eauto.
+Qed.
+
+Lemma test_to_aff_complete_normalized:
+    forall tst env cols constrs,
+    test_to_aff tst = Okk constrs -&gt;
+    Datatypes.length env = cols -&gt;
+    forallb (satisfies_constraint env) (normalize_affine_list cols constrs) = true -&gt;
+    Loop.eval_test env tst = true.
+Proof.
+    intros tst env cols constrs Htst Hlen Hsat.
+    rewrite normalize_affine_list_satisfies_constraint with (cols:=cols) (env:=env) (affs:=constrs) in Hsat; auto.
+    eapply test_to_aff_complete; eauto.
+Qed.
+
+Lemma test_false_implies_not_in_poly_normalized:
+    forall tst env cols constrs,
+    test_to_aff tst = Okk constrs -&gt;
+    Datatypes.length env = cols -&gt;
+    Loop.eval_test env tst = false -&gt;
+    in_poly env (normalize_affine_list cols constrs) = false.
+Proof.
+    intros tst env cols constrs Htst Hlen Heval.
+    unfold in_poly.
+    destruct (forallb (satisfies_constraint env) (normalize_affine_list cols constrs)) eqn:HSat.
+    - exfalso.
+      eapply test_to_aff_complete_normalized in HSat; eauto.
+      rewrite HSat in Heval.
+      discriminate.
+    - reflexivity.
+Qed.
+
+Lemma guard_constraints_sound:
+    forall test env cols constrs test_constrs,
+    test_to_aff test = Okk test_constrs -&gt;
+    Loop.eval_test env test = true -&gt;
+    Datatypes.length env = cols -&gt;
+    forallb (satisfies_constraint env) constrs = true -&gt;
+    forallb (satisfies_constraint env)
+        (constrs ++ normalize_affine_list cols test_constrs) = true.
+Proof.
+    intros test env cols constrs test_constrs Htest Heval Hlen Hconstrs.
+    rewrite forallb_app.
+    rewrite andb_true_iff_local. split; auto.
+    eapply test_to_aff_sound_normalized; eauto.
+Qed.
+
+Lemma guard_constraints_sound_in_poly:
+    forall test env cols constrs test_constrs,
+    test_to_aff test = Okk test_constrs -&gt;
+    Loop.eval_test env test = true -&gt;
+    Datatypes.length env = cols -&gt;
+    in_poly env constrs = true -&gt;
+    in_poly env (constrs ++ normalize_affine_list cols test_constrs) = true.
+Proof.
+    intros test env cols constrs test_constrs Htest Heval Hlen Hin.
+    unfold in_poly in *.
+    eapply guard_constraints_sound; eauto.
+Qed.
+
+Definition lb_to_constr (lb: PolIRs.Loop.expr) (depth: nat): result (list Z * Z) := 
+    match (expr_to_aff lb) with 
+    | Okk (aff, c) =&gt; Okk ((-1%Z) :: (resize depth aff), Z.opp c) 
+    | Err msg =&gt; Err msg
+    end
+.
+
+(** $3 + 5 &lt;= $4  ==&gt; -$4 + $3 &lt;= -5 *)
+Example test_lb_to_constr_1:
+    lb_to_constr (PolIRs.Loop.Sum (PolIRs.Loop.Var 3) (PolIRs.Loop.Constant 5%Z)) 4
+    = Okk ([-1%Z; 0%Z; 0%Z; 0%Z; 1%Z], -5%Z).
+Proof. reflexivity. Qed.
+
+Lemma lb_to_constr_sound:
+    forall lb env depth constr i,
+    Datatypes.length env = depth -&gt;
+    lb_to_constr lb depth = Okk constr -&gt;
+    satisfies_constraint (i :: env) constr = true &lt;-&gt;
+    (Loop.eval_expr env lb &lt;= i)%Z.
+Proof.
+    intros lb env depth constr i Hlen Hlb.
+    unfold lb_to_constr in Hlb.
+    destruct (expr_to_aff lb) as [[v c]|msg] eqn:He; try discriminate.
+    pose proof Hlen as Hlen0.
+    inversion Hlb; subst; clear Hlb.
+    split; intro Hsat.
+    - unfold satisfies_constraint in Hsat. simpl in Hsat.
+      rewrite Z.leb_le in Hsat.
+      rewrite dot_product_resize_right in Hsat.
+      simpl in Hsat.
+      pose proof (expr_to_aff_correct lb env (v, c) v c He eq_refl) as Heval.
+      rewrite Heval.
+      lia.
+    - pose proof (expr_to_aff_correct lb env (v, c) v c He eq_refl) as Heval.
+      rewrite Heval in Hsat.
+      unfold satisfies_constraint. simpl.
+      rewrite Z.leb_le.
+      rewrite dot_product_resize_right.
+      simpl.
+      lia.
+Qed.
+
+Definition ub_to_constr (ub: PolIRs.Loop.expr) (depth: nat): result (list Z * Z) := 
+    match (expr_to_aff ub) with
+    | Okk (aff, c) =&gt; Okk ((1%Z) :: (resize depth (map Z.opp aff)), c-1)    (** &lt; =&gt; &lt;= -1*)
+    | Err msg =&gt; Err msg 
+    end
+.
+
+(** $3 + 5 &gt; $4 =&gt; $4 - $3 &lt; 5 *)
+Example test_ub_to_constr_1:
+    ub_to_constr (PolIRs.Loop.Sum (PolIRs.Loop.Var 3) (PolIRs.Loop.Constant 5%Z)) 4
+    = Okk ([1%Z; 0%Z; 0%Z; 0%Z; -1%Z], 4%Z).
+Proof. reflexivity. Qed.
+
+Lemma ub_to_constr_sound:
+    forall ub env depth constr i,
+    Datatypes.length env = depth -&gt;
+    ub_to_constr ub depth = Okk constr -&gt;
+    satisfies_constraint (i :: env) constr = true &lt;-&gt;
+    (i &lt; Loop.eval_expr env ub)%Z.
+Proof.
+    intros ub env depth constr i Hlen Hub.
+    unfold ub_to_constr in Hub.
+    destruct (expr_to_aff ub) as [[v c]|msg] eqn:He; try discriminate.
+    pose proof Hlen as Hlen0.
+    inversion Hub; subst; clear Hub.
+    split; intro Hsat.
+    - unfold satisfies_constraint in Hsat. simpl in Hsat.
+      rewrite Z.leb_le in Hsat.
+      rewrite dot_product_resize_right in Hsat.
+      rewrite dot_product_opp_right in Hsat.
+      simpl in Hsat.
+      pose proof (expr_to_aff_correct ub env (v, c) v c He eq_refl) as Heval.
+      rewrite Heval.
+      lia.
+    - pose proof (expr_to_aff_correct ub env (v, c) v c He eq_refl) as Heval.
+      rewrite Heval in Hsat.
+      unfold satisfies_constraint. simpl.
+      rewrite Z.leb_le.
+      rewrite dot_product_resize_right.
+      rewrite dot_product_opp_right.
+      simpl.
+      lia.
+Qed.
+
+Lemma loop_bounds_sound:
+    forall lb ub env depth lbc ubc i,
+    Datatypes.length env = depth -&gt;
+    lb_to_constr lb depth = Okk lbc -&gt;
+    ub_to_constr ub depth = Okk ubc -&gt;
+    (satisfies_constraint (i :: env) lbc = true /\
+     satisfies_constraint (i :: env) ubc = true) &lt;-&gt;
+    (Loop.eval_expr env lb &lt;= i &lt; Loop.eval_expr env ub)%Z.
+Proof.
+    intros lb ub env depth lbc ubc i Hlen Hlb Hub.
+    rewrite lb_to_constr_sound with (lb:=lb) (env:=env) (depth:=depth) (constr:=lbc) (i:=i); auto.
+    rewrite ub_to_constr_sound with (ub:=ub) (env:=env) (depth:=depth) (constr:=ubc) (i:=i); auto.
+Qed.
+
+Lemma loop_constraints_complete_lifted:
+    forall lb ub env depth constrs lbc ubc i,
+    Datatypes.length env = depth -&gt;
+    lb_to_constr lb depth = Okk lbc -&gt;
+    ub_to_constr ub depth = Okk ubc -&gt;
+    in_poly (i :: env) (lift_affine_list constrs ++ [lbc; ubc]) = true -&gt;
+    in_poly env constrs = true /\
+    (Loop.eval_expr env lb &lt;= i &lt; Loop.eval_expr env ub)%Z.
+Proof.
+    intros lb ub env depth constrs lbc ubc i Hlen Hlb Hub Hin.
+    eapply in_poly_lift_app_cons2_inv in Hin.
+    destruct Hin as [Hbase [Hlbc Hubc]].
+    split; auto.
+    eapply loop_bounds_sound; eauto.
+Qed.
+
+Lemma loop_constraints_sound_lifted:
+    forall lb ub env depth constrs lbc ubc i,
+    Datatypes.length env = depth -&gt;
+    lb_to_constr lb depth = Okk lbc -&gt;
+    ub_to_constr ub depth = Okk ubc -&gt;
+    in_poly env constrs = true -&gt;
+    (Loop.eval_expr env lb &lt;= i &lt; Loop.eval_expr env ub)%Z -&gt;
+    in_poly (i :: env) (lift_affine_list constrs ++ [lbc; ubc]) = true.
+Proof.
+    intros lb ub env depth constrs lbc ubc i Hlen Hlb Hub Hconstr Hbounds.
+    unfold in_poly in *.
+    rewrite forallb_app.
+    apply andb_true_iff_local.
+    split.
+    - rewrite lift_affine_list_satisfies_constraint.
+      exact Hconstr.
+    - simpl.
+      apply andb_true_iff_local.
+      split.
+      + eapply (proj2 (lb_to_constr_sound lb env depth lbc i Hlen Hlb)); lia.
+      + apply andb_true_iff_local.
+        split.
+        * eapply (proj2 (ub_to_constr_sound ub env depth ubc i Hlen Hub)); lia.
+        * reflexivity.
+Qed.
+
+Lemma in_poly_guard_split:
+    forall p constrs cols test_constrs,
+    in_poly p (constrs ++ normalize_affine_list cols test_constrs) = true -&gt;
+    in_poly p constrs = true /\
+    forallb (satisfies_constraint p) (normalize_affine_list cols test_constrs) = true.
+Proof.
+    intros p constrs cols test_constrs Hin.
+    unfold in_poly in *.
+    rewrite forallb_app in Hin.
+    eapply andb_true_iff_local in Hin.
+    exact Hin.
+Qed.
+
+Lemma in_poly_normalize_affine_list_rev_app_inv:
+    forall cols env pol1 pol2,
+    Datatypes.length env = cols -&gt;
+    in_poly env (normalize_affine_list_rev cols (pol1 ++ pol2)) = true -&gt;
+    in_poly (rev env) pol1 = true /\
+    in_poly (rev env) pol2 = true.
+Proof.
+    intros cols env pol1 pol2 Hlen Hin.
+    unfold in_poly in *.
+    rewrite normalize_affine_list_rev_satisfies_constraint in Hin; auto.
+    rewrite forallb_app in Hin.
+    eapply andb_true_iff_local in Hin.
+    exact Hin.
+Qed.
+
+Lemma firstn_length_decompose:
+    forall (envv idx: list Z) d,
+    firstn (Datatypes.length envv) idx = envv -&gt;
+    Datatypes.length idx = (Datatypes.length envv + d)%nat -&gt;
+    exists suf,
+      idx = envv ++ suf /\ Datatypes.length suf = d.
+Proof.
+    intros envv idx d Hprefix Hlen.
+    exists (skipn (Datatypes.length envv) idx).
+    split.
+    - rewrite &lt;- firstn_skipn with (n:=Datatypes.length envv) (l:=idx) at 1.
+      rewrite Hprefix.
+      reflexivity.
+    - rewrite skipn_length.
+      rewrite Hlen.
+      lia.
+Qed.
+
+Lemma skipn_length_S_singleton:
+    forall (k: nat) (l: list Z),
+    Datatypes.length l = S k -&gt;
+    exists x, skipn k l = [x].
+Proof.
+    intros k l Hlen.
+    assert (Datatypes.length (skipn k l) = 1%nat) as Hsk.
+    {
+      rewrite skipn_length.
+      rewrite Hlen.
+      lia.
+    }
+    destruct (skipn k l) as [|x xs] eqn:Hskip.
+    - simpl in Hsk. lia.
+    - exists x.
+      simpl in Hsk.
+      destruct xs as [|y ys].
+      + reflexivity.
+      + simpl in Hsk. lia.
+Qed.
+
+Fixpoint extract_stmt
+    (stmt: PolIRs.Loop.stmt)
+    (constrs: Domain)
+    (env_dim iter_depth: nat)
+    (sched_prefix: Schedule)
+    {struct stmt}: result (list PolIRs.PolyLang.PolyInstr) :=
+    let cols := (env_dim + iter_depth)%nat in
+    match stmt with
+    | PolIRs.Loop.Instr instr es =&gt;
+        match exprlist_to_aff es cols with
+        | Okk tf =&gt;
+            match resolve_access_functions instr with
+            | Some (w, r) =&gt;
+                Okk [{|
+                    PolIRs.PolyLang.pi_depth := iter_depth;
+                    PolIRs.PolyLang.pi_instr := instr;
+                    PolIRs.PolyLang.pi_poly := normalize_affine_list_rev cols constrs;
+                    PolIRs.PolyLang.pi_schedule := normalize_affine_list_rev cols sched_prefix;
+                    PolIRs.PolyLang.pi_point_witness := PSWIdentity iter_depth;
+                    PolIRs.PolyLang.pi_transformation := normalize_affine_list_rev cols tf;
+                    PolIRs.PolyLang.pi_access_transformation := normalize_affine_list_rev cols tf;
+                    PolIRs.PolyLang.pi_waccess := normalize_access_list cols w;
+                    PolIRs.PolyLang.pi_raccess := normalize_access_list cols r;
+                |}]
+            | None =&gt; Err &quot;Instr access extraction/check failed&quot;%string
+            end
+        | Err msg =&gt; Err msg
+        end
+    | PolIRs.Loop.Seq stmts =&gt;
+        extract_stmts stmts constrs env_dim iter_depth sched_prefix 0
+    | PolIRs.Loop.Loop lb ub stmt =&gt;
+        let lb_constr := lb_to_constr lb cols in
+        let ub_constr := ub_to_constr ub cols in
+        match lb_constr, ub_constr with
+        | Okk lb_constr&#x27;, Okk ub_constr&#x27; =&gt;
+            let constrs&#x27; := lift_affine_list constrs ++ [lb_constr&#x27;; ub_constr&#x27;] in
+            let sched_prefix&#x27; := lift_affine_list sched_prefix ++ [((1%Z :: repeat 0%Z cols), 0%Z)] in
+            extract_stmt stmt constrs&#x27; env_dim (S iter_depth) sched_prefix&#x27;
+        | _, _ =&gt; Err &quot;Loop bound to aff failed&quot;%string
+        end
+    | PolIRs.Loop.Guard test stmt =&gt;
+        let test_constrs := test_to_aff test in
+        match test_constrs with
+        | Okk test_constrs&#x27; =&gt;
+            let constrs&#x27; := constrs ++ normalize_affine_list cols test_constrs&#x27; in
+            extract_stmt stmt constrs&#x27; env_dim iter_depth sched_prefix
+        | Err msg =&gt; Err msg
+        end
+    end
+with extract_stmts
+    (stmts: PolIRs.Loop.stmt_list)
+    (constrs: Domain)
+    (env_dim iter_depth: nat)
+    (sched_prefix: Schedule)
+    (pos: nat)
+    {struct stmts}: result (list PolIRs.PolyLang.PolyInstr) :=
+    let cols := (env_dim + iter_depth)%nat in
+    match stmts with
+    | PolIRs.Loop.SNil =&gt; Okk nil
+    | PolIRs.Loop.SCons stmt stmts&#x27; =&gt;
+        let sched_prefix&#x27; := sched_prefix ++ [(repeat 0%Z cols, Z.of_nat pos)] in
+        match extract_stmt stmt constrs env_dim iter_depth sched_prefix&#x27; with
+        | Okk pis =&gt;
+            match extract_stmts stmts&#x27; constrs env_dim iter_depth sched_prefix (S pos) with
+            | Okk pis&#x27; =&gt; Okk (pis ++ pis&#x27;)
+            | Err msg =&gt; Err msg
+            end
+        | Err msg =&gt; Err msg
+        end
+    end.
+
+Lemma extract_stmt_instr_success_inv:
+    forall instr es constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt (PolIRs.Loop.Instr instr es) constrs env_dim iter_depth sched_prefix = Okk pis -&gt;
+    exists tf w r,
+      exprlist_to_aff es (env_dim + iter_depth)%nat = Okk tf /\
+      resolve_access_functions instr = Some (w, r) /\
+      pis =
+      [{|
+        PolIRs.PolyLang.pi_depth := iter_depth;
+        PolIRs.PolyLang.pi_instr := instr;
+        PolIRs.PolyLang.pi_poly := normalize_affine_list_rev (env_dim + iter_depth)%nat constrs;
+        PolIRs.PolyLang.pi_schedule := normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix;
+        PolIRs.PolyLang.pi_point_witness := PSWIdentity iter_depth;
+        PolIRs.PolyLang.pi_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
+        PolIRs.PolyLang.pi_access_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
+        PolIRs.PolyLang.pi_waccess := normalize_access_list (env_dim + iter_depth)%nat w;
+        PolIRs.PolyLang.pi_raccess := normalize_access_list (env_dim + iter_depth)%nat r;
+      |}].
+Proof.
+    intros instr es constrs env_dim iter_depth sched_prefix pis Hext.
+    simpl in Hext.
+    remember (exprlist_to_aff es (env_dim + iter_depth)%nat) as Tf.
+    destruct Tf as [tf|msg]; try discriminate.
+    remember (resolve_access_functions instr) as Access.
+    destruct Access as [[w r]|]; try discriminate.
+    inv Hext.
+    do 3 eexists.
+    repeat split; eauto.
+Qed.
+
+Lemma extract_stmt_seq_success_inv:
+    forall stmts constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt (PolIRs.Loop.Seq stmts) constrs env_dim iter_depth sched_prefix = Okk pis -&gt;
+    extract_stmts stmts constrs env_dim iter_depth sched_prefix 0 = Okk pis.
+Proof.
+    intros stmts constrs env_dim iter_depth sched_prefix pis Hext.
+    simpl in Hext. exact Hext.
+Qed.
+
+Lemma extract_stmt_loop_success_inv:
+    forall lb ub body constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs env_dim iter_depth sched_prefix = Okk pis -&gt;
+    exists lbc ubc,
+      lb_to_constr lb (env_dim + iter_depth)%nat = Okk lbc /\
+      ub_to_constr ub (env_dim + iter_depth)%nat = Okk ubc /\
+      extract_stmt body (lift_affine_list constrs ++ [lbc; ubc]) env_dim (S iter_depth)
+        (lift_affine_list sched_prefix ++ [((1%Z :: repeat 0%Z (env_dim + iter_depth)%nat), 0%Z)]) = Okk pis.
+Proof.
+    intros lb ub body constrs env_dim iter_depth sched_prefix pis Hext.
+    simpl in Hext.
+    remember (lb_to_constr lb (env_dim + iter_depth)%nat) as Lb.
+    remember (ub_to_constr ub (env_dim + iter_depth)%nat) as Ub.
+    destruct Lb as [lbc|msg1]; destruct Ub as [ubc|msg2]; try discriminate.
+    eexists; eexists.
+    repeat split; eauto.
+Qed.
+
+Lemma extract_stmt_guard_success_inv:
+    forall test body constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt (PolIRs.Loop.Guard test body) constrs env_dim iter_depth sched_prefix = Okk pis -&gt;
+    exists test_constrs,
+      test_to_aff test = Okk test_constrs /\
+      extract_stmt body
+        (constrs ++ normalize_affine_list (env_dim + iter_depth)%nat test_constrs)
+        env_dim iter_depth sched_prefix = Okk pis.
+Proof.
+    intros test body constrs env_dim iter_depth sched_prefix pis Hext.
+    simpl in Hext.
+    remember (test_to_aff test) as Tst.
+    destruct Tst as [test_constrs|msg]; try discriminate.
+    eexists.
+    split; eauto.
+Qed.
+
+Lemma extract_stmts_cons_success_inv:
+    forall stmt stmts&#x27; constrs env_dim iter_depth sched_prefix pos pis,
+    extract_stmts (PolIRs.Loop.SCons stmt stmts&#x27;) constrs env_dim iter_depth sched_prefix pos = Okk pis -&gt;
+    exists pis1 pis2,
+      extract_stmt stmt constrs env_dim iter_depth
+        (sched_prefix ++ [(repeat 0%Z (env_dim + iter_depth)%nat, Z.of_nat pos)]) = Okk pis1 /\
+      extract_stmts stmts&#x27; constrs env_dim iter_depth sched_prefix (S pos) = Okk pis2 /\
+      pis = pis1 ++ pis2.
+Proof.
+    intros stmt stmts&#x27; constrs env_dim iter_depth sched_prefix pos pis Hext.
+    simpl in Hext.
+    remember (extract_stmt stmt constrs env_dim iter_depth
+      (sched_prefix ++ [(repeat 0%Z (env_dim + iter_depth)%nat, Z.of_nat pos)])) as S1.
+    destruct S1 as [pis1|msg1]; try discriminate.
+    remember (extract_stmts stmts&#x27; constrs env_dim iter_depth sched_prefix (S pos)) as S2.
+    destruct S2 as [pis2|msg2]; try discriminate.
+    inv Hext.
+    exists pis1.
+    exists pis2.
+    repeat split; eauto.
+Qed.
+
+Lemma extract_stmts_nil_success_inv:
+    forall constrs env_dim iter_depth sched_prefix pos pis,
+    extract_stmts PolIRs.Loop.SNil constrs env_dim iter_depth sched_prefix pos = Okk pis -&gt;
+    pis = [].
+Proof.
+    intros constrs env_dim iter_depth sched_prefix pos pis Hext.
+    simpl in Hext. inv Hext. reflexivity.
+Qed.
+
+Definition pi_has_lifted_prefix
+    (env_dim iter_depth: nat)
+    (constrs: Domain)
+    (pi: PolyLang.PolyInstr): Prop :=
+    exists k tail,
+      PolyLang.pi_depth pi = (iter_depth + k)%nat /\
+      PolyLang.pi_poly pi =
+        normalize_affine_list_rev (env_dim + PolyLang.pi_depth pi)%nat
+          (lift_affine_list_n k constrs ++ tail).
+
+Definition pi_has_lifted_sched_prefix
+    (env_dim iter_depth: nat)
+    (sched_prefix: Schedule)
+    (pi: PolyLang.PolyInstr): Prop :=
+    exists k tail,
+      PolyLang.pi_depth pi = (iter_depth + k)%nat /\
+      PolyLang.pi_schedule pi =
+        normalize_affine_list_rev (env_dim + PolyLang.pi_depth pi)%nat
+          (lift_affine_list_n k sched_prefix ++ tail).
+
+Lemma extract_stmt_has_lifted_prefix:
+    forall stmt constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis -&gt;
+    forall pi, In pi pis -&gt;
+    pi_has_lifted_prefix env_dim iter_depth constrs pi
+with extract_stmts_has_lifted_prefix:
+    forall stmts constrs env_dim iter_depth sched_prefix pos pis,
+    extract_stmts stmts constrs env_dim iter_depth sched_prefix pos = Okk pis -&gt;
+    forall pi, In pi pis -&gt;
+    pi_has_lifted_prefix env_dim iter_depth constrs pi.
+Proof.
+    - induction stmt as [lb ub body IHbody|i es|stmts|test body IHbody];
+        intros constrs env_dim iter_depth sched_prefix pis Hext pi Hin.
+      + eapply extract_stmt_loop_success_inv in Hext.
+        destruct Hext as (lbc &amp; ubc &amp; Hlb &amp; Hub &amp; Hbody).
+        eapply IHbody in Hbody; eauto.
+        destruct Hbody as (k &amp; tail &amp; Hdepth &amp; Hpoly).
+        unfold pi_has_lifted_prefix.
+        exists (S k).
+        exists (lift_affine_list_n k [lbc; ubc] ++ tail).
+        split.
+        * lia.
+        * rewrite Hpoly.
+          f_equal.
+          rewrite lift_affine_list_n_app.
+          rewrite lift_affine_list_n_succ.
+          rewrite app_assoc.
+          reflexivity.
+      + eapply extract_stmt_instr_success_inv in Hext.
+        destruct Hext as (tf &amp; w &amp; r &amp; Htf &amp; Hacc &amp; Hpis).
+        subst pis.
+        simpl in Hin.
+        destruct Hin as [Hin|Hin]; [|contradiction].
+        subst pi.
+        unfold pi_has_lifted_prefix.
+        exists 0%nat.
+        exists ([]: list (list Z * Z)).
+        split.
+        * rewrite Nat.add_0_r.
+          reflexivity.
+        * simpl.
+          rewrite app_nil_r.
+          reflexivity.
+      + eapply extract_stmt_seq_success_inv in Hext.
+        eapply extract_stmts_has_lifted_prefix; eauto.
+      + eapply extract_stmt_guard_success_inv in Hext.
+        destruct Hext as (test_constrs &amp; Htest &amp; Hbody).
+        eapply IHbody in Hbody; eauto.
+        destruct Hbody as (k &amp; tail &amp; Hdepth &amp; Hpoly).
+        unfold pi_has_lifted_prefix.
+        exists k.
+        exists (lift_affine_list_n k (normalize_affine_list (env_dim + iter_depth)%nat test_constrs) ++ tail).
+        split; auto.
+        rewrite Hpoly.
+        f_equal.
+        rewrite lift_affine_list_n_app.
+        rewrite app_assoc.
+        reflexivity.
+    - induction stmts as [|stmt stmts&#x27; IHstmts&#x27;]; intros constrs env_dim iter_depth sched_prefix pos pis Hext pi Hin.
+      + eapply extract_stmts_nil_success_inv in Hext.
+        subst pis.
+        contradiction.
+      + eapply extract_stmts_cons_success_inv in Hext.
+        destruct Hext as (pis1 &amp; pis2 &amp; Hstmt &amp; Htl &amp; Hpis).
+        subst pis.
+        eapply in_app_or in Hin.
+        destruct Hin as [Hin1|Hin2].
+        * eapply extract_stmt_has_lifted_prefix; eauto.
+        * eapply IHstmts&#x27;; eauto.
+Qed.
+
+Lemma extract_stmt_has_lifted_sched_prefix:
+    forall stmt constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis -&gt;
+    forall pi, In pi pis -&gt;
+    pi_has_lifted_sched_prefix env_dim iter_depth sched_prefix pi
+with extract_stmts_has_lifted_sched_prefix:
+    forall stmts constrs env_dim iter_depth sched_prefix pos pis,
+    extract_stmts stmts constrs env_dim iter_depth sched_prefix pos = Okk pis -&gt;
+    forall pi, In pi pis -&gt;
+    pi_has_lifted_sched_prefix env_dim iter_depth sched_prefix pi.
+Proof.
+    - induction stmt as [lb ub body IHbody|i es|stmts|test body IHbody];
+        intros constrs env_dim iter_depth sched_prefix pis Hext pi Hin.
+      + eapply extract_stmt_loop_success_inv in Hext.
+        destruct Hext as (lbc &amp; ubc &amp; Hlb &amp; Hub &amp; Hbody).
+        eapply IHbody in Hbody; eauto.
+        destruct Hbody as (k &amp; tail &amp; Hdepth &amp; Hsched).
+        unfold pi_has_lifted_sched_prefix.
+        exists (S k).
+        exists (lift_affine_list_n k
+          [((1%Z :: repeat 0%Z (env_dim + iter_depth)%nat), 0%Z)] ++ tail).
+        split.
+        * lia.
+        * rewrite Hsched.
+          f_equal.
+          rewrite lift_affine_list_n_app.
+          rewrite lift_affine_list_n_succ.
+          rewrite app_assoc.
+          reflexivity.
+      + eapply extract_stmt_instr_success_inv in Hext.
+        destruct Hext as (tf &amp; w &amp; r &amp; Htf &amp; Hacc &amp; Hpis).
+        subst pis.
+        simpl in Hin.
+        destruct Hin as [Hin|Hin]; [|contradiction].
+        subst pi.
+        unfold pi_has_lifted_sched_prefix.
+        exists 0%nat.
+        exists ([]: list (list Z * Z)).
+        split.
+        * rewrite Nat.add_0_r.
+          reflexivity.
+        * simpl.
+          rewrite app_nil_r.
+          reflexivity.
+      + eapply extract_stmt_seq_success_inv in Hext.
+        eapply extract_stmts_has_lifted_sched_prefix; eauto.
+      + eapply extract_stmt_guard_success_inv in Hext.
+        destruct Hext as (test_constrs &amp; Htest &amp; Hbody).
+        eapply IHbody in Hbody; eauto.
+    - induction stmts as [|stmt stmts&#x27; IHstmts&#x27;]; intros constrs env_dim iter_depth sched_prefix pos pis Hext pi Hin.
+      + eapply extract_stmts_nil_success_inv in Hext.
+        subst pis.
+        contradiction.
+      + eapply extract_stmts_cons_success_inv in Hext.
+        destruct Hext as (pis1 &amp; pis2 &amp; Hstmt &amp; Htl &amp; Hpis).
+        subst pis.
+        eapply in_app_or in Hin.
+        destruct Hin as [Hin1|Hin2].
+        * eapply extract_stmt_has_lifted_sched_prefix in Hstmt; eauto.
+          destruct Hstmt as (k &amp; tail &amp; Hdepth &amp; Hsched).
+          unfold pi_has_lifted_sched_prefix.
+          exists k.
+          exists (lift_affine_list_n k
+            [(repeat 0%Z (env_dim + iter_depth)%nat, Z.of_nat pos)] ++ tail).
+          split; auto.
+          rewrite Hsched.
+          f_equal.
+          rewrite lift_affine_list_n_app.
+          rewrite app_assoc.
+          reflexivity.
+        * eapply IHstmts&#x27;; eauto.
+Qed.
+
+Definition check_extracted_wf
+    (pis: list PolyLang.PolyInstr)
+    (varctxt: list ident)
+    (vars: list (ident * Ty.t)) : bool :=
+    Nat.leb (length varctxt) (length vars) &amp;&amp;
+    forallb (fun pi =&gt; Val.check_wf_polyinstr pi varctxt vars) pis.
+
+Lemma check_extracted_wf_spec:
+    forall pis varctxt vars,
+    check_extracted_wf pis varctxt vars = true -&gt;
+    Nat.leb (length varctxt) (length vars) = true /\
+    forallb (fun pi =&gt; Val.check_wf_polyinstr pi varctxt vars) pis = true.
+Proof.
+    intros pis varctxt vars H.
+    unfold check_extracted_wf in H.
+    destruct (Nat.leb (length varctxt) (length vars)) eqn:Hlen; simpl in H; try discriminate.
+    destruct (forallb (fun pi : PolyLang.PolyInstr =&gt; Val.check_wf_polyinstr pi varctxt vars) pis) eqn:Hpis; simpl in H; try discriminate.
+    split; auto.
+Qed.
+
+Definition extractor (loop: PolIRs.Loop.t): result PolIRs.PolyLang.t :=
+    let &#x27;(stmt, varctxt, vars) := loop in
+    if wf_scop_stmt stmt then
+      let pol := extract_stmt stmt [] (length varctxt) 0 [] in
+      match pol with
+      | Okk pis =&gt;
+          if check_extracted_wf pis varctxt vars
+          then Okk (pis, varctxt, vars)
+          else Err &quot;Extractor generated ill-formed poly program&quot;%string
+      | Err msg =&gt; Err msg
+      end
+    else Err &quot;Extractor rejected non-affine SCoP fragment&quot;%string.
+
+Lemma extractor_success_implies_wf_scop:
+    forall stmt varctxt vars pol,
+    extractor (stmt, varctxt, vars) = Okk pol -&gt;
+    wf_scop_stmt stmt = true.
+Proof.
+    intros stmt varctxt vars pol Hext.
+    unfold extractor in Hext. simpl in Hext.
+    remember (wf_scop_stmt stmt) as WfScop.
+    destruct WfScop; try discriminate.
+    reflexivity.
+Qed.
+
+Lemma extractor_success_implies_wf_check:
+    forall loop pol,
+    extractor loop = Okk pol -&gt;
+    let &#x27;(pis, varctxt, vars) := pol in
+    check_extracted_wf pis varctxt vars = true.
+Proof.
+    intros [[stmt varctxt] vars] [[pis varctxt_out] vars_out] Hext.
+    unfold extractor in Hext.
+    destruct (wf_scop_stmt stmt) eqn:WfScop; try discriminate.
+    remember (extract_stmt stmt [] (Datatypes.length varctxt) 0 []) as Extract.
+    destruct Extract as [pis0|msg]; try discriminate.
+    destruct (check_extracted_wf pis0 varctxt vars) eqn:Hwf; try discriminate.
+    inversion Hext; subst.
+    exact Hwf.
+Qed.
+
+Lemma extractor_success_inv:
+    forall stmt varctxt vars pol,
+    extractor (stmt, varctxt, vars) = Okk pol -&gt;
+    exists pis,
+    extract_stmt stmt [] (Datatypes.length varctxt) 0 [] = Okk pis /\
+    check_extracted_wf pis varctxt vars = true /\
+    pol = (pis, varctxt, vars).
+Proof.
+    intros stmt varctxt vars pol Hext.
+    unfold extractor in Hext.
+    destruct (wf_scop_stmt stmt) eqn:WfScop; try discriminate.
+    destruct (extract_stmt stmt [] (Datatypes.length varctxt) 0 []) as [pis|msg] eqn:Hextract;
+      try discriminate.
+    destruct (check_extracted_wf pis varctxt vars) eqn:Hwf; try discriminate.
+    inversion Hext; subst.
+    exists pis.
+    repeat split; auto.
+Qed.
+
+Lemma extractor_success_implies_varctxt_le_vars:
+    forall loop pis varctxt vars,
+    extractor loop = Okk (pis, varctxt, vars) -&gt;
+    (Datatypes.length varctxt &lt;= Datatypes.length vars)%nat.
+Proof.
+    intros loop pis varctxt vars Hext.
+    pose proof (extractor_success_implies_wf_check loop (pis, varctxt, vars) Hext) as Hwf.
+    simpl in Hwf.
+    apply check_extracted_wf_spec in Hwf.
+    destruct Hwf as [Hlen _].
+    eapply Nat.leb_le; eauto.
+Qed.
+
+
+End ExtractorFrontend.
 </pre>
 </main>
 </body>

@@ -3,82 +3,66 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>multicut_valid.bridge</title>
+  <title>test.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/iss-pluto-dumps/multicut_valid.bridge</code></h1>
-  <pre>VAR_ORDER 4
-VAR i
-VAR j
-VAR k
-VAR t
-BEFORE_STMTS 1
-BEFORE_DOMAIN 8
-ROW 0,0,0,-1|-1
-ROW 0,0,0,1|15
-ROW -1,0,0,0|0
-ROW 1,0,0,0|15
-ROW 0,-1,0,0|0
-ROW 0,1,0,0|15
-ROW 0,0,-1,0|0
-ROW 0,0,1,0|15
-AFTER_STMTS 4
-AFTER_DOMAIN 10
-ROW 0,0,0,-1|-1
-ROW 0,0,0,1|15
-ROW -1,0,0,0|0
-ROW 1,0,0,0|15
-ROW 0,-1,0,0|0
-ROW 0,1,0,0|15
-ROW 0,0,-1,0|0
-ROW 0,0,1,0|15
-ROW 2,0,0,0|14
-ROW 0,2,0,0|14
-AFTER_DOMAIN 10
-ROW 0,0,0,-1|-1
-ROW 0,0,0,1|15
-ROW -1,0,0,0|0
-ROW 1,0,0,0|15
-ROW 0,-1,0,0|0
-ROW 0,1,0,0|15
-ROW 0,0,-1,0|0
-ROW 0,0,1,0|15
-ROW -2,0,0,0|-15
-ROW 0,2,0,0|14
-AFTER_DOMAIN 10
-ROW 0,0,0,-1|-1
-ROW 0,0,0,1|15
-ROW -1,0,0,0|0
-ROW 1,0,0,0|15
-ROW 0,-1,0,0|0
-ROW 0,1,0,0|15
-ROW 0,0,-1,0|0
-ROW 0,0,1,0|15
-ROW 2,0,0,0|14
-ROW 0,-2,0,0|-15
-AFTER_DOMAIN 10
-ROW 0,0,0,-1|-1
-ROW 0,0,0,1|15
-ROW -1,0,0,0|0
-ROW 1,0,0,0|15
-ROW 0,-1,0,0|0
-ROW 0,1,0,0|15
-ROW 0,0,-1,0|0
-ROW 0,0,1,0|15
-ROW -2,0,0,0|-15
-ROW 0,-2,0,0|-15
-CUTS 2
-CUT -2,0,0,0|14
-CUT 0,-2,0,0|14
-STMT_WITNESSES 4
-STMT_WITNESS 0 ge,ge
-STMT_WITNESS 0 lt,ge
-STMT_WITNESS 0 ge,lt
-STMT_WITNESS 0 lt,lt
-END
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/extracted-zero-fallback/test.ml</code></h1>
+  <pre>let fail label detail =
+  Printf.eprintf &quot;[extracted-zero-fallback] FAIL %s: %s\n&quot; label detail;
+  exit 1
+
+let expect_certchecker_failure label thunk =
+  try
+    ignore (thunk ());
+    fail label &quot;returned instead of raising CertCheckerFailure&quot;
+  with
+  | CertcheckerConfig.CertCheckerFailure _ -&gt; ()
+  | exn -&gt; fail label (&quot;raised unexpected exception: &quot; ^ Printexc.to_string exn)
+
+let expect_rejected_route label thunk =
+  TilingValidationRoute.clear ();
+  expect_certchecker_failure label thunk;
+  match TilingValidationRoute.take () with
+  | [&quot;rejected&quot;] -&gt; ()
+  | routes -&gt;
+      fail label
+        (&quot;expected route [rejected], observed [&quot;
+         ^ String.concat &quot;; &quot; routes ^ &quot;]&quot;)
+
+let expect_no_return label thunk =
+  TilingValidationRoute.clear ();
+  expect_certchecker_failure label thunk;
+  ignore (TilingValidationRoute.take ())
+
+let () =
+  expect_rejected_route &quot;SBandTilingOpt.reject_tiling&quot;
+    (fun () -&gt; SBandTilingOpt.reject_tiling ());
+  expect_no_return &quot;SBandTilingOpt.Rejected selector&quot;
+    (fun () -&gt;
+      SBandTilingOpt.prepared_codegen_after_tiling_route
+        SBandTilingOpt.PolyLang.dummy
+        SBandTilingOpt.TilingSched.Rejected);
+  expect_no_return &quot;SBandTilingOpt post-tiling affine rejection&quot;
+    (fun () -&gt;
+      SBandTilingOpt.reject_post_tiling_affine
+        SBandTilingOpt.TilingSched.DirectBandAccepted
+        ());
+  expect_rejected_route &quot;SParallelPolOpt.reject_tiling&quot;
+    (fun () -&gt; SParallelPolOpt.reject_tiling ());
+  expect_no_return &quot;SParallelPolOpt.Rejected selector&quot;
+    (fun () -&gt;
+      SParallelPolOpt.select_after_tiling_route
+        SParallelPolOpt.PolyLang.dummy
+        SParallelPolOpt.TilingSched.Rejected);
+  expect_no_return &quot;SParallelPolOpt post-tiling affine rejection&quot;
+    (fun () -&gt;
+      SParallelPolOpt.reject_post_tiling_affine
+        SParallelPolOpt.TilingSched.DirectBandAccepted);
+  Printf.printf
+    &quot;[extracted-zero-fallback] OK (6 direct extracted API rejection paths)\n&quot;
 </pre>
 </main>
 </body>

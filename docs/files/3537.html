@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>matmul-seq3.loop</title>
+  <title>matmul-seq.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/matmul-seq3.loop</code></h1>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/matmul-seq.loop</code></h1>
   <pre>context(N);
 
 for i in range(0, N) {
@@ -22,14 +22,7 @@ for i in range(0, N) {
 for i in range(0, N) {
   for j in range(0, N) {
     for k in range(0, N) {
-      F[i][j] = (F[i][j] + (D[i][k] * E[k][j]));
-    }
-  }
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    for k in range(0, N) {
-      G[i][j] = (G[i][j] + (C[i][k] * F[k][j]));
+      D[i][j] = (D[i][j] + (C[i][k] * E[k][j]));
     }
   }
 }

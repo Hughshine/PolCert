@@ -3,19 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dsyr2k.loop</title>
+  <title>doitgen.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/dsyr2k.loop</code></h1>
-  <pre>context(NMAX);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/doitgen.loop</code></h1>
+  <pre>context(N);
 
-for i in range(0, NMAX) {
-  for j in range(0, NMAX) {
-    for k in range(j, NMAX) {
-      c[j][k] = (c[j][k] + ((a[i][j] * b[i][k]) + (b[i][j] * a[i][k])));
+for r in range(0, N) {
+  for q in range(0, N) {
+    for p in range(0, N) {
+      sum[r][q][p] = 0;
+      for s in range(0, N) {
+        sum[r][q][p] = (sum[r][q][p] + (A[r][q][s] * C4[s][p]));
+      }
+    }
+    for p in range(0, N) {
+      A[r][q][p] = sum[r][q][p];
     }
   }
 }

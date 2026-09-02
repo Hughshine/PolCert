@@ -3,22 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>lu.loop</title>
+  <title>jacobi-2d-imper.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/lu.loop</code></h1>
-  <pre>context(N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/jacobi-2d-imper.loop</code></h1>
+  <pre>context(T, N);
 
-for k in range(0, N) {
-  for j in range((k + 1), N) {
-    a[k][j] = (a[k][j] / a[k][k]);
+for t in range(0, T) {
+  for i in range(2, (N - 1)) {
+    for j in range(2, (N - 1)) {
+      b[i][j] = (0.2 * ((((a[i][j] + a[i][(j - 1)]) + a[i][(1 + j)]) + a[(1 + i)][j]) + a[(i - 1)][j]));
+    }
   }
-  for i in range((k + 1), N) {
-    for j in range((k + 1), N) {
-      a[i][j] = (a[i][j] - (a[i][k] * a[k][j]));
+  for i in range(2, (N - 1)) {
+    for j in range(2, (N - 1)) {
+      a[i][j] = b[i][j];
     }
   }
 }

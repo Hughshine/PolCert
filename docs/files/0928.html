@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.txt</title>
+  <title>after.txt</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/679438e6ae08a0/before.txt</code></h1>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/679438e6ae08a0/after.txt</code></h1>
   <pre>[pluto] Pet SCoP context
 Set #1
 [2 dims; 4 constraints]
@@ -21,19 +21,48 @@ c_j+32768 &gt;= 0
 [pluto] Pet to Pluto stmts
 [pluto] Pet SCoP context
 [pluto] compute_deps (isl)
+[pluto] Number of statements: 1
+[pluto] Total number of loops: 3
+[pluto] Number of deps: 19
+[pluto] Maximum domain dimensionality: 3
+[pluto] Number of parameters: 2
+[iss] Dimension 0 has 19 long deps
+[iss] Dimension 1 has 4 long deps
+[iss] Dimension 2 has 4 long deps
+[iss] Dimension 0
+[pluto] pluto_constraints_lexmin_isl (8 variables, 291 constraints)
+[iss] No solution to close to mid-point cut)
+[iss] Dimension 1
+[pluto] pluto_constraints_lexmin_isl (8 variables, 51 constraints)
+[iss] m = 0
+[iss] h (cut) is Set #1
+[5 dims; 1 constraints]
+2i-_N = 0
+
+[iss] Dimension 2
+[pluto] pluto_constraints_lexmin_isl (8 variables, 51 constraints)
+[iss] m = 0
+[iss] h (cut) is Set #1
+[5 dims; 1 constraints]
+2j-_N = 0
+
+[iss] Splitting S1 into 4 statements
+After ISS
 nvar = 3, npar = 2
 Parameters: _T _N 
 S1 &quot;A[(t + 1) % 2][i][j] = (((0.125 * ((A[t % 2][i == _N ? 0 : i + 1][j] - (2.0 * A[t % 2][i][j])) + A[t % 2][i == 0 ? _N : i - 1][j])) + (0.125 * ((A[t % 2][i][j == _N ? 0 : j + 1] - (2.0 * A[t % 2][i][j])) + A[t % 2][i][j == 0 ? _N : j - 1]))) + A[t % 2][i][j]);&quot;
 ndims: 3; orig_depth: 3
 Index set
 Set #1
-[5 dims; 6 constraints]
+[5 dims; 8 constraints]
 t &gt;= 0
 -t+_T-1 &gt;= 0
 i &gt;= 0
 -i+_N &gt;= 0
 j &gt;= 0
 -j+_N &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
 
 T(S1): (0, t, i, j)
 loop types (loop, loop, loop, loop)
@@ -55,11 +84,112 @@ Original loop: 0 -&gt; yes
 Original loop: 1 -&gt; yes
 Original loop: 2 -&gt; yes
 
+S2 &quot;A[(t + 1) % 2][i][j] = (((0.125 * ((A[t % 2][i == _N ? 0 : i + 1][j] - (2.0 * A[t % 2][i][j])) + A[t % 2][i == 0 ? _N : i - 1][j])) + (0.125 * ((A[t % 2][i][j == _N ? 0 : j + 1] - (2.0 * A[t % 2][i][j])) + A[t % 2][i][j == 0 ? _N : j - 1]))) + A[t % 2][i][j]);&quot;
+ndims: 3; orig_depth: 3
+Index set
+Set #1
+[5 dims; 8 constraints]
+t &gt;= 0
+-t+_T-1 &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+
+T(S2): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
+Read accesses
+A[0][i][j+1]
+A[0][i+1][j]
+A[0][i][j]
+A[0][i-1][j]
+A[0][i][j-1]
+A[0][i][_N]
+A[0][_N][j]
+A[0][0][j]
+A[0][i][0]
+A[0][i][j]
+Write accesses
+A[0][i][j]
+Original loop: 0 -&gt; yes
+Original loop: 1 -&gt; yes
+Original loop: 2 -&gt; yes
+
+S3 &quot;A[(t + 1) % 2][i][j] = (((0.125 * ((A[t % 2][i == _N ? 0 : i + 1][j] - (2.0 * A[t % 2][i][j])) + A[t % 2][i == 0 ? _N : i - 1][j])) + (0.125 * ((A[t % 2][i][j == _N ? 0 : j + 1] - (2.0 * A[t % 2][i][j])) + A[t % 2][i][j == 0 ? _N : j - 1]))) + A[t % 2][i][j]);&quot;
+ndims: 3; orig_depth: 3
+Index set
+Set #1
+[5 dims; 8 constraints]
+t &gt;= 0
+-t+_T-1 &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+
+T(S3): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
+Read accesses
+A[0][i][j+1]
+A[0][i+1][j]
+A[0][i][j]
+A[0][i-1][j]
+A[0][i][j-1]
+A[0][i][_N]
+A[0][_N][j]
+A[0][0][j]
+A[0][i][0]
+A[0][i][j]
+Write accesses
+A[0][i][j]
+Original loop: 0 -&gt; yes
+Original loop: 1 -&gt; yes
+Original loop: 2 -&gt; yes
+
+S4 &quot;A[(t + 1) % 2][i][j] = (((0.125 * ((A[t % 2][i == _N ? 0 : i + 1][j] - (2.0 * A[t % 2][i][j])) + A[t % 2][i == 0 ? _N : i - 1][j])) + (0.125 * ((A[t % 2][i][j == _N ? 0 : j + 1] - (2.0 * A[t % 2][i][j])) + A[t % 2][i][j == 0 ? _N : j - 1]))) + A[t % 2][i][j]);&quot;
+ndims: 3; orig_depth: 3
+Index set
+Set #1
+[5 dims; 8 constraints]
+t &gt;= 0
+-t+_T-1 &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+
+T(S4): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
+Read accesses
+A[0][i][j+1]
+A[0][i+1][j]
+A[0][i][j]
+A[0][i-1][j]
+A[0][i][j-1]
+A[0][i][_N]
+A[0][_N][j]
+A[0][0][j]
+A[0][i][0]
+A[0][i][j]
+Write accesses
+A[0][i][j]
+Original loop: 0 -&gt; yes
+Original loop: 1 -&gt; yes
+Original loop: 2 -&gt; yes
+
 --- Dep 1 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27;-1 = 0
 -i+i&#x27; = 0
 t &gt;= 0
@@ -69,13 +199,111 @@ j &gt;= 0
 -j+_N-1 &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 1 from S1 to S3; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 1 from S2 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 1 from S2 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 1 from S3 to S3; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 1 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 2 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27; = 0
 -i+i&#x27;-1 = 0
 t &gt;= 0
@@ -85,13 +313,111 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 2 from S1 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 2 from S2 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 2 from S3 to S3; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 2 from S3 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 2 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 3 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27; = 0
 -i+i&#x27; = 0
 t &gt;= 0
@@ -101,13 +427,73 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 3 from S2 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 3 from S3 to S3; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 3 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 4 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27; = 0
 -i+i&#x27;+1 = 0
 t &gt;= 0
@@ -117,13 +503,111 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 4 from S2 to S1; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 4 from S2 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 4 from S3 to S3; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 4 from S4 to S3; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 4 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 5 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27;+1 = 0
 -i+i&#x27; = 0
 t &gt;= 0
@@ -133,13 +617,111 @@ j-1 &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
 
 
---- Dep 6 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
+--- Dep 5 from S2 to S2; satisfied: 0, sat level: -1; Type: RAW
 Dependence polyhedron
 Set #1
-[8 dims; 8 constraints]
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 5 from S3 to S1; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 5 from S3 to S3; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 5 from S4 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 5 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 6 from S3 to S1; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
 j&#x27; = 0
 -i+i&#x27; = 0
 j-_N = 0
@@ -148,13 +730,52 @@ i &gt;= 0
 -i+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
 
 
---- Dep 7 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
+--- Dep 6 from S4 to S2; satisfied: 0, sat level: -1; Type: RAW
 Dependence polyhedron
 Set #1
-[8 dims; 8 constraints]
+[8 dims; 12 constraints]
+j&#x27; = 0
+-i+i&#x27; = 0
+j-_N = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 6 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+j&#x27; = 0
+-i+i&#x27; = 0
+j-_N = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 7 from S2 to S1; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
 -j+j&#x27; = 0
 i&#x27; = 0
 i-_N = 0
@@ -163,13 +784,52 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
 
 
---- Dep 8 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
+--- Dep 7 from S4 to S3; satisfied: 0, sat level: -1; Type: RAW
 Dependence polyhedron
 Set #1
-[8 dims; 8 constraints]
+[8 dims; 12 constraints]
+-j+j&#x27; = 0
+i&#x27; = 0
+i-_N = 0
+t &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 7 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+-j+j&#x27; = 0
+i&#x27; = 0
+i-_N = 0
+t &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 8 from S1 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
 -j+j&#x27; = 0
 i&#x27;-_N = 0
 i = 0
@@ -178,13 +838,52 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
 
 
---- Dep 9 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: A
+--- Dep 8 from S3 to S4; satisfied: 0, sat level: -1; Type: RAW
 Dependence polyhedron
 Set #1
-[8 dims; 8 constraints]
+[8 dims; 12 constraints]
+-j+j&#x27; = 0
+i&#x27;-_N = 0
+i = 0
+t &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 8 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+-j+j&#x27; = 0
+i&#x27;-_N = 0
+i = 0
+t &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 9 from S1 to S3; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
 j&#x27;-_N = 0
 -i+i&#x27; = 0
 j = 0
@@ -193,13 +892,52 @@ i &gt;= 0
 -i+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 9 from S2 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+j&#x27;-_N = 0
+-i+i&#x27; = 0
+j = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 9 from S4 to S4; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+j&#x27;-_N = 0
+-i+i&#x27; = 0
+j = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 10 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27;-1 = 0
 -i+i&#x27; = 0
 t &gt;= 0
@@ -209,13 +947,111 @@ j &gt;= 0
 -j+_N-1 &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 10 from S1 to S3; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 10 from S2 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 10 from S2 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 10 from S3 to S3; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 10 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;-1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N-1 &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 11 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27; = 0
 -i+i&#x27;-1 = 0
 t &gt;= 0
@@ -225,13 +1061,111 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 11 from S1 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 11 from S2 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 11 from S3 to S3; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 11 from S3 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 11 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;-1 = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N-1 &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 12 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27; = 0
 -i+i&#x27; = 0
 t &gt;= 0
@@ -241,13 +1175,73 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 12 from S2 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 12 from S3 to S3; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 12 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 13 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27; = 0
 -i+i&#x27;+1 = 0
 t &gt;= 0
@@ -257,13 +1251,111 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 13 from S2 to S1; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 13 from S2 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 13 from S3 to S3; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 13 from S4 to S3; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 13 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27;+1 = 0
+t &gt;= 0
+i-1 &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 14 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27;+1 = 0
 -i+i&#x27; = 0
 t &gt;= 0
@@ -273,13 +1365,111 @@ j-1 &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
 
 
---- Dep 15 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
+--- Dep 14 from S2 to S2; satisfied: 0, sat level: -1; Type: WAR
 Dependence polyhedron
 Set #1
-[8 dims; 8 constraints]
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 14 from S3 to S1; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 14 from S3 to S3; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 14 from S4 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 14 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27;+1 = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j-1 &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 15 from S1 to S3; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
 j&#x27;-_N = 0
 -i+i&#x27; = 0
 j = 0
@@ -288,13 +1478,52 @@ i &gt;= 0
 -i+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
---- Dep 16 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
+--- Dep 15 from S2 to S4; satisfied: 0, sat level: -1; Type: WAR
 Dependence polyhedron
 Set #1
-[8 dims; 8 constraints]
+[8 dims; 12 constraints]
+j&#x27;-_N = 0
+-i+i&#x27; = 0
+j = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 15 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+j&#x27;-_N = 0
+-i+i&#x27; = 0
+j = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 16 from S1 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
 -j+j&#x27; = 0
 i&#x27;-_N = 0
 i = 0
@@ -303,13 +1532,52 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
 
 
---- Dep 17 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
+--- Dep 16 from S3 to S4; satisfied: 0, sat level: -1; Type: WAR
 Dependence polyhedron
 Set #1
-[8 dims; 8 constraints]
+[8 dims; 12 constraints]
+-j+j&#x27; = 0
+i&#x27;-_N = 0
+i = 0
+t &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 16 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+-j+j&#x27; = 0
+i&#x27;-_N = 0
+i = 0
+t &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 17 from S2 to S1; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
 -j+j&#x27; = 0
 i&#x27; = 0
 i-_N = 0
@@ -318,13 +1586,52 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
 
 
---- Dep 18 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: A
+--- Dep 17 from S4 to S3; satisfied: 0, sat level: -1; Type: WAR
 Dependence polyhedron
 Set #1
-[8 dims; 8 constraints]
+[8 dims; 12 constraints]
+-j+j&#x27; = 0
+i&#x27; = 0
+i-_N = 0
+t &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 17 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+-j+j&#x27; = 0
+i&#x27; = 0
+i-_N = 0
+t &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 18 from S3 to S1; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
 j&#x27; = 0
 -i+i&#x27; = 0
 j-_N = 0
@@ -333,13 +1640,52 @@ i &gt;= 0
 -i+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 18 from S4 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+j&#x27; = 0
+-i+i&#x27; = 0
+j-_N = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 18 from S4 to S4; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[8 dims; 12 constraints]
+j&#x27; = 0
+-i+i&#x27; = 0
+j-_N = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 --- Dep 19 from S1 to S1; satisfied: 0, sat level: -1; Type: WAW
-on variable: A
 Dependence polyhedron
 Set #1
-[8 dims; 9 constraints]
+[8 dims; 13 constraints]
 -j+j&#x27; = 0
 -i+i&#x27; = 0
 t &gt;= 0
@@ -349,41 +1695,87 @@ j &gt;= 0
 -j+_N &gt;= 0
 -t+t&#x27;-1 &gt;= 0
 -t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+-2j+_N-1 &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 19 from S2 to S2; satisfied: 0, sat level: -1; Type: WAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+-2j+_N-1 &gt;= 0
+2i&#x27;-_N &gt;= 0
+-2j&#x27;+_N-1 &gt;= 0
+
+
+--- Dep 19 from S3 to S3; satisfied: 0, sat level: -1; Type: WAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+-2i+_N-1 &gt;= 0
+2j-_N &gt;= 0
+-2i&#x27;+_N-1 &gt;= 0
+2j&#x27;-_N &gt;= 0
+
+
+--- Dep 19 from S4 to S4; satisfied: 0, sat level: -1; Type: WAW
+Dependence polyhedron
+Set #1
+[8 dims; 13 constraints]
+-j+j&#x27; = 0
+-i+i&#x27; = 0
+t &gt;= 0
+i &gt;= 0
+-i+_N &gt;= 0
+j &gt;= 0
+-j+_N &gt;= 0
+-t+t&#x27;-1 &gt;= 0
+-t&#x27;+_T-1 &gt;= 0
+2i-_N &gt;= 0
+2j-_N &gt;= 0
+2i&#x27;-_N &gt;= 0
+2j&#x27;-_N &gt;= 0
 
 
 T(S1): (0, t, i, j)
 loop types (loop, loop, loop, loop)
 
-[pluto] Number of statements: 1
-[pluto] Total number of loops: 3
-[pluto] Number of deps: 19
-[pluto] Maximum domain dimensionality: 3
-[pluto] Number of parameters: 2
+T(S2): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
+T(S3): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
+T(S4): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
 [pluto] pluto_compute_dep_satisfaction
 [pluto] pluto_dep_satisfaction_reset
 [pluto] dep_satisfaction_update (level 0)
 	 0 dep(s) satisfied
 [pluto] dep_satisfaction_update (level 1)
-[pluto] dep_satisfaction_update: dep 1 satisfied
-[pluto] dep_satisfaction_update: dep 2 satisfied
-[pluto] dep_satisfaction_update: dep 3 satisfied
-[pluto] dep_satisfaction_update: dep 4 satisfied
-[pluto] dep_satisfaction_update: dep 5 satisfied
-[pluto] dep_satisfaction_update: dep 6 satisfied
-[pluto] dep_satisfaction_update: dep 7 satisfied
-[pluto] dep_satisfaction_update: dep 8 satisfied
-[pluto] dep_satisfaction_update: dep 9 satisfied
-[pluto] dep_satisfaction_update: dep 10 satisfied
-[pluto] dep_satisfaction_update: dep 11 satisfied
-[pluto] dep_satisfaction_update: dep 12 satisfied
-[pluto] dep_satisfaction_update: dep 13 satisfied
-[pluto] dep_satisfaction_update: dep 14 satisfied
-[pluto] dep_satisfaction_update: dep 15 satisfied
-[pluto] dep_satisfaction_update: dep 16 satisfied
-[pluto] dep_satisfaction_update: dep 17 satisfied
-[pluto] dep_satisfaction_update: dep 18 satisfied
-[pluto] dep_satisfaction_update: dep 19 satisfied
-	 19 dep(s) satisfied
+	 84 dep(s) satisfied
 [pluto] dep_satisfaction_update (level 2)
 	 0 dep(s) satisfied
 [pluto] dep_satisfaction_update (level 3)
@@ -393,37 +1785,53 @@ loop types (loop, loop, loop, loop)
 T(S1): (0, t, i, j)
 loop types (loop, loop, loop, loop)
 
+T(S2): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
+T(S3): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
+T(S4): (0, t, i, j)
+loop types (loop, loop, loop, loop)
+
+Total number of fused bands 1
+Band 0 to be fused with band 0
+Band 1 to be fused with band 0
+Band 2 to be fused with band 0
+Band 3 to be fused with band 0
+Bands for intra tile optimization 
+(t3, t4, ) with stmts {S1, S2, S3, S4, }
 Getting loop at depth  2
-[pluto-intra-tile-opt] Score for loop 0: 34
-t4 {loop with stmts: S1, }
-[pluto-intra-tile-opt] Score for loop 1: -136
-t3 {loop with stmts: S1, }
+[pluto-intra-tile-opt] Score for loop 0: 448
+t4 {loop with stmts: S1, S2, S3, S4, }
+[pluto-intra-tile-opt] Score for loop 1: -2176
+t3 {loop with stmts: S1, S2, S3, S4, }
 [pluto] generating Cloog file...
 [pluto] using Cloog -f/-l options: 1 4
 [pluto] cloog_input_read
 [pluto] cloog_clast_create
 [pluto_mark_vector] parallel loops
-t4 {loop with stmts: S1, }
-t3 {loop with stmts: S1, }
+t4 {loop with stmts: S1, S2, S3, S4, }
+t3 {loop with stmts: S1, S2, S3, S4, }
 [pluto_mark_vector] marking loop vectorizable
-t4 {loop with stmts: S1, }
+t4 {loop with stmts: S1, S2, S3, S4, }
 Number of accesses with temporal reuse: 2
-t3 {loop with stmts: S1, }
+t3 {loop with stmts: S1, S2, S3, S4, }
 Total number of unique accesses at innermost level 9
-t3 {loop with stmts: S1, }
+t3 {loop with stmts: S1, S2, S3, S4, }
 Cost for loop: -26
 [pluto-unroll-jam] No unroll jam loop candidates found
 [Pluto] Output written to heat-2dp.pluto.c
 
 [pluto] Timing statistics
-[pluto] SCoP extraction + dependence analysis time: 0.039667s
+[pluto] SCoP extraction + dependence analysis time: 0.039493s
 [pluto] Auto-transformation time: 0.000000s
 [pluto] Tile size selection time: 0.000000s
 [pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000000s
-[pluto] Code generation time: 0.002335s
-[pluto] Other/Misc time: 0.061195s
-[pluto] Total time: 0.103197s
-[pluto] All times: 0.039667 0.000000 0.002335 0.061195
+[pluto] Code generation time: 0.011160s
+[pluto] Other/Misc time: 0.064531s
+[pluto] Total time: 0.115184s
+[pluto] All times: 0.039493 0.000000 0.011160 0.064531
 </pre>
 </main>
 </body>

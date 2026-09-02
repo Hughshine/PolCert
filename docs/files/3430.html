@@ -3,33 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>diamond-suite.stdout.txt</title>
+  <title>codegen-gap-exploration.stdout.txt</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/raw/diamond-suite.stdout.txt</code></h1>
-  <pre>[diamond-suite] PASS case=diamond-tile-example.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=fdtd-2d.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=heat-3d-imperfect.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-2d-imper.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-2d.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=multi-stmt-stencil-seq.c expected=effect:no_effect,route:permutable-band,phase:true actual=effect:no_effect,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=seidel.c expected=effect:no_effect,route:permutable-band,phase:true actual=effect:no_effect,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-1d-imper.c expected=status:pluto_final_schedule_rejected,exit:1 actual=status:pluto_final_schedule_rejected,exit:1 interpretation=fixed-producer-refused-an-illegal-final-schedule
-[diamond-suite] PASS case=heat-2d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=heat-2dp.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=heat-3d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-mod.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-periodic-even.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-17pt.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-imper.par2d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-3d-25pt.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-3d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS expected=19 actual=19 interpretation=all-declared-diamond-effects-and-rejections-matched
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/raw/codegen-gap-exploration.stdout.txt</code></h1>
+  <pre>{
+  &quot;after_scheduling_scops_equal&quot;: true,
+  &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/matmul.loop&quot;,
+  &quot;generated_c_differs&quot;: true,
+  &quot;mode&quot;: &quot;pluto-codegen-gap-unrolljam&quot;,
+  &quot;output_root&quot;: &quot;/tmp/polcert-artifact-check/codegen-gaps&quot;,
+  &quot;pluto_nounrolljam_exit&quot;: 0,
+  &quot;pluto_unrolljam_exit&quot;: 0,
+  &quot;polopt_checked_unrolljam&quot;: {
+    &quot;accepted&quot;: true,
+    &quot;block_offset_marker_present&quot;: true,
+    &quot;checked_factor_note_present&quot;: true,
+    &quot;checked_remainder_loop_marker_present&quot;: true,
+    &quot;exit&quot;: 0,
+    &quot;stderr&quot;: &quot;[tiling-validation] route=permutable-band\n&quot;,
+    &quot;stdout&quot;: &quot;) / 32)) {\n        for i2 in range(0, ((K + 31) / 32)) {\n          for i3 in range(max((32 * ((4 * i0) + 3)), 0), min(((32 * ((4 * i0) + 3)) + 32), M)) {\n            for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {\n              for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), K)) {\n                C[i3][i4] = ((beta * C[i3][i4]) + ((alpha * A[i3][i5]) * B[i5][i4]));\n              }\n            }\n          }\n        }\n      }\n    }\n    for i0 in range((4 * (((M + 31) / 32) / 4)), ((M + 31) / 32)) {\n      for i1 in range(0, ((N + 31) / 32)) {\n        for i2 in range(0, ((K + 31) / 32)) {\n          for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), M)) {\n            for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {\n              for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), K)) {\n                C[i3][i4] = ((beta * C[i3][i4]) + ((alpha * A[i3][i5]) * B[i5][i4]));\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n\n&quot;
+  },
+  &quot;remainder_loop_marker_present&quot;: true,
+  &quot;unroll_factor_marker_present&quot;: true
+}
 </pre>
 </main>
 </body>

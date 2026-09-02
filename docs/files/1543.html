@@ -3,62 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/cd00fe2d17e58e/after.loop</code></h1>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/ccf5786750e8c0/before.loop</code></h1>
   <pre>context(N);
 
-if (1 &lt;= N) {
-  parallel for i0 in range(0, ((N + 31) / 32)) {
-    for i1 in range(0, ((N + 31) / 32)) {
-      for i2 in range(0, ((N + 31) / 32)) {
-        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
-          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
-            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
-              sum[i3][i4][i5] = 0;
-            }
-          }
-        }
-      }
-    }
-  }
-}
-if (1 &lt;= N) {
-  parallel for i0 in range(0, ((N + 31) / 32)) {
-    for i1 in range(0, ((N + 31) / 32)) {
-      for i2 in range(0, ((N + 31) / 32)) {
-        for i3 in range(0, ((N + 31) / 32)) {
-          for i4 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
-            for i5 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
-              for i6 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
-                for i7 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
-                  sum[i4][i5][i6] = (sum[i4][i5][i6] + (A[i4][i5][i7] * C4[i7][i6]));
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-if (1 &lt;= N) {
-  parallel for i0 in range(0, ((N + 31) / 32)) {
-    for i1 in range(0, ((N + 31) / 32)) {
-      for i2 in range(0, ((N + 31) / 32)) {
-        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
-          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
-            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
-              A[i3][i4][i5] = sum[i3][i4][i5];
-            }
-          }
-        }
-      }
-    }
+for i in range(0, N) {
+  for j in range(1, N) {
+    a[i][j] = (a[j][i] + a[i][(j - 1)]);
   }
 }
 </pre>

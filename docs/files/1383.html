@@ -3,58 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/b5fae58d9a903e/after.loop</code></h1>
-  <pre>context(n);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/b5df122906c457/before.loop</code></h1>
+  <pre>context(M, N, K);
 
-for i0 in range(1, min(3, (n + -1))) {
-  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
-}
-for i0 in range(3, min((n + -1), 5)) {
-  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
-  for i1 in range((i0 + -1), i0) {
-    a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
-  }
-}
-for i0 in range(5, min(7, (n + -1))) {
-  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
-  for i1 in range((i0 + -1), i0) {
-    a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
-  }
-  for i1 in range((i0 + -2), (i0 + -1)) {
-    a3[i1] = ((a2[(i1 + -1)] + a2[i1]) + a2[(i1 + 1)]);
-  }
-}
-for i0 in range(7, min((n + -1), 9)) {
-  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
-  for i1 in range((i0 + -1), i0) {
-    a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
-  }
-  for i1 in range((i0 + -2), (i0 + -1)) {
-    a3[i1] = ((a2[(i1 + -1)] + a2[i1]) + a2[(i1 + 1)]);
-  }
-  for i1 in range((i0 + -3), (i0 + -2)) {
-    a4[i1] = ((a3[(i1 + -1)] + a3[i1]) + a3[(i1 + 1)]);
-  }
-}
-for i0 in range(9, (n + -1)) {
-  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
-  for i1 in range((i0 + -1), i0) {
-    a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
-  }
-  for i1 in range((i0 + -2), (i0 + -1)) {
-    a3[i1] = ((a2[(i1 + -1)] + a2[i1]) + a2[(i1 + 1)]);
-  }
-  for i1 in range((i0 + -3), (i0 + -2)) {
-    a4[i1] = ((a3[(i1 + -1)] + a3[i1]) + a3[(i1 + 1)]);
-  }
-  for i1 in range((i0 + -4), (i0 + -3)) {
-    a5[i1] = ((a4[(i1 + -1)] + a4[i1]) + a4[(i1 + 1)]);
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+    }
   }
 }
 </pre>

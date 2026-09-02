@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/94330bdaf2235d/after.loop</code></h1>
-  <pre>context(NMAX);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/93df4d67981eb4/before.loop</code></h1>
+  <pre>context(N);
 
-if (3 &lt;= NMAX) {
-  for i0 in range(0, ((NMAX + 31) / 32)) {
-    for i1 in range(0, ((NMAX + 31) / 32)) {
-      for i2 in range(0, min(((NMAX + 29) / 32), (((32 * i1) + 61) / 32))) {
-        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {
-          for i4 in range(max(max(((32 * i2) + 2), 2), (32 * i1)), min(((32 * i1) + 32), NMAX)) {
-            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), (i4 + -1))) {
-              c[i3][i4] = (c[i3][i4] + (a[i4][i4] * b[i3][i4]));
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+              C[i3][i4] = (C[i3][i4] + (A[i3][i5] * B[i5][i4]));
             }
           }
         }
@@ -27,25 +27,29 @@ if (3 &lt;= NMAX) {
     }
   }
 }
-if (1 &lt;= NMAX) {
-  for i0 in range(0, ((NMAX + 31) / 32)) {
-    for i1 in range(0, ((NMAX + 31) / 32)) {
-      for i2 in range(max(0, (32 * i0)), min(NMAX, ((32 * i0) + 32))) {
-        for i3 in range(max(0, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {
-          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+              F[i3][i4] = (F[i3][i4] + (D[i3][i5] * E[i5][i4]));
+            }
+          }
         }
       }
     }
   }
 }
-if (3 &lt;= NMAX) {
-  for i0 in range(0, ((NMAX + 31) / 32)) {
-    for i1 in range(0, ((NMAX + 29) / 32)) {
-      for i2 in range(max(0, (((32 * i1) + 2) / 32)), ((NMAX + 31) / 32)) {
-        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {
-          for i4 in range(max((32 * i1), 0), min(min(((32 * i2) + 30), (NMAX + -2)), ((32 * i1) + 32))) {
-            for i5 in range(max((32 * i2), (i4 + 2)), min(((32 * i2) + 32), NMAX)) {
-              c[i3][i4] = (c[i3][i4] + (a[i5][i4] * b[i3][i5]));
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+              G[i3][i4] = (G[i3][i4] + (C[i3][i5] * F[i5][i4]));
             }
           }
         }

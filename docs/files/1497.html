@@ -3,44 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.c</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/c5a8414ac569e8/after.c</code></h1>
-  <pre>#include &lt;omp.h&gt;
-#include &lt;math.h&gt;
-#define ceild(n,d)  (((n)&lt;0) ? -((-(n))/(d)) : ((n)+(d)-1)/(d))
-#define floord(n,d) (((n)&lt;0) ? -((-(n)+(d)-1)/(d)) : (n)/(d))
-#define max(x,y)    ((x) &gt; (y)? (x) : (y))
-#define min(x,y)    ((x) &lt; (y)? (x) : (y))
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/c53dc4b1f2ab92/before.loop</code></h1>
+  <pre>context(M, N, K);
 
-#include &lt;stdio.h&gt;
-
-#define N 10000
-
-static int a[1][N];
-
-int main(void) {
-  int i, j;
-  a[0][0] = 1;
-
-  int t1, t2;
- int lb, ub, lbp, ubp, lb2, ub2;
- register int lbv, ubv;
-if (N &gt;= 2) {
-  lbp=1;
-  ubp=N-1;
-#pragma omp parallel for private(lbv,ubv)
-  for (t2=lbp;t2&lt;=ubp;t2++) {
-    a[0][t2] = a[0][t2 - 1] + 1;;
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+    }
   }
-}
-
-  printf(&quot;%d\n&quot;, a[0][N - 1]);
-  return 0;
 }
 </pre>
 </main>

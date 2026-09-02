@@ -3,51 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_artifact_runner_timeout.py</title>
+  <title>wavefront.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tools/artifact/test_artifact_runner_timeout.py</code></h1>
-  <pre>#!/usr/bin/env python3
-from __future__ import annotations
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/wavefront.loop</code></h1>
+  <pre>context(N);
 
-import sys
-import tempfile
-from pathlib import Path
-
-from run_artifact_check import run_check
-
-
-def main() -&gt; int:
-    with tempfile.TemporaryDirectory() as tmp:
-        result = run_check(
-            &quot;timeout-probe&quot;,
-            [
-                sys.executable,
-                &quot;-c&quot;,
-                (
-                    &quot;import sys, time; &quot;
-                    &quot;print(&#x27;partial stdout&#x27;, flush=True); &quot;
-                    &quot;print(&#x27;partial stderr&#x27;, file=sys.stderr, flush=True); &quot;
-                    &quot;time.sleep(2)&quot;
-                ),
-            ],
-            Path(tmp),
-            1,
-        )
-        assert result.returncode == 124
-        assert &quot;partial stdout&quot; in Path(result.stdout_path).read_text()
-        stderr = Path(result.stderr_path).read_text()
-        assert &quot;partial stderr&quot; in stderr
-        assert &quot;[artifact-check] timeout after 1 seconds&quot; in stderr
-    print(&quot;[artifact-runner-timeout-unit] PASS&quot;)
-    return 0
-
-
-if __name__ == &quot;__main__&quot;:
-    raise SystemExit(main())
+for i in range(1, N) {
+  for j in range(1, N) {
+    a[i][j] = (a[(i - 1)][j] + a[i][(j - 1)]);
+  }
+}
 </pre>
 </main>
 </body>

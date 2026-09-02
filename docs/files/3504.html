@@ -3,40 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>advect3d.loop</title>
+  <title>adi.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/advect3d.loop</code></h1>
-  <pre>context(ny, nx, nz);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/adi.loop</code></h1>
+  <pre>context(T, N);
 
-for j in range(4, (((ny + 9) - 2) + 1)) {
-  for i in range(4, (((nx + 9) - 3) + 1)) {
-    for k in range(4, (((nz + 9) - 3) + 1)) {
-      ab[j][i][k] = (((((f60 * (a[(j - 1)][i][k] + a[j][i][k])) + (f61 * (a[(j - 2)][i][k] + a[(j + 1)][i][k]))) + (f62 * (a[(j - 3)][i][k] + a[(j + 2)][i][k]))) * thirddtbydy) * uyb[j][i][k]);
+for t in range(0, T) {
+  for i1 in range(0, N) {
+    for i2 in range(1, N) {
+      X[i1][i2] = (X[i1][i2] - ((X[i1][(i2 - 1)] * A[i1][i2]) / B[i1][(i2 - 1)]));
+      B[i1][i2] = (B[i1][i2] - ((A[i1][i2] * A[i1][i2]) / B[i1][(i2 - 1)]));
     }
   }
-}
-for j in range(4, (((ny + 9) - 3) + 1)) {
-  for i in range(4, (((nx + 9) - 2) + 1)) {
-    for k in range(4, (((nz + 9) - 3) + 1)) {
-      al[j][i][k] = (((((f60 * (a[j][(i - 1)][k] + a[j][i][k])) + (f61 * (a[j][(i - 2)][k] + a[j][(i + 1)][k]))) + (f62 * (a[j][(i - 3)][k] + a[j][(i + 2)][k]))) * thirddtbydx) * uxl[j][i][k]);
-    }
-  }
-}
-for j in range(4, (((ny + 9) - 3) + 1)) {
-  for i in range(4, (((nx + 9) - 3) + 1)) {
-    for k in range(4, (((nz + 9) - 2) + 1)) {
-      af[j][i][k] = (((((f60 * (a[j][i][(k - 1)] + a[j][i][k])) + (f61 * (a[j][i][(k - 2)] + a[j][i][(k + 1)]))) + (f62 * (a[j][i][(k - 3)] + a[j][i][(k + 2)]))) * thirddtbydz) * uzf[j][i][k]);
-    }
-  }
-}
-for j in range(4, (((ny + 9) - 3) + 1)) {
-  for i in range(4, (((nx + 9) - 3) + 1)) {
-    for k in range(4, (((nz + 9) - 3) + 1)) {
-      athird[j][i][k] = (((a[j][i][k] + (al[j][(i + 1)][k] - al[j][i][k])) + (ab[(j + 1)][i][k] - ab[j][i][k])) + (af[j][i][(k + 1)] - af[j][i][k]));
+  for i1 in range(1, N) {
+    for i2 in range(0, N) {
+      X[i1][i2] = (X[i1][i2] - ((X[(i1 - 1)][i2] * A[i1][i2]) / B[(i1 - 1)][i2]));
+      B[i1][i2] = (B[i1][i2] - ((A[i1][i2] * A[i1][i2]) / B[(i1 - 1)][i2]));
     }
   }
 }

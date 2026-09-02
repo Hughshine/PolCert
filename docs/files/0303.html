@@ -3,36 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/08bbe29f46dc1b/after.loop</code></h1>
-  <pre>context(M, N, K);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/089f39b8f9b954/before.c</code></h1>
+  <pre>#define S1(zT2,zT3,$i0,$i1)	B[$i0][$i1] = A[$i0][$i1] + u1[$i0] * v1[$i1] + u2[$i0] * v2[$i1];
+#define S2(zT2,zT3,$i0,$i1)	x[$i0] = x[$i0] + beta * B[$i1][$i0] * y[$i1];
+#define S3(zT1,$i0)	x[$i0] = x[$i0] + z[$i0];
+#define S4(zT2,zT3,$i0,$i1)	w[$i0] = w[$i0] + alpha * B[$i0][$i1] * x[$i1];
 
-if ((1 &lt;= M &amp;&amp; (1 &lt;= N &amp;&amp; 1 &lt;= K))) {
-  for i0 in range(0, ((M + 255) / 256)) {
-    for i1 in range(0, ((N + 255) / 256)) {
-      for i2 in range(0, ((K + 255) / 256)) {
-        for i3 in range(max(0, (8 * i0)), min(((M + 31) / 32), ((8 * i0) + 8))) {
-          for i4 in range(max(0, (8 * i1)), min(((N + 31) / 32), ((8 * i1) + 8))) {
-            for i5 in range(max(0, (8 * i2)), min(((K + 31) / 32), ((8 * i2) + 8))) {
-              for i6 in range(max(0, (32 * i3)), min(M, ((32 * i3) + 32))) {
-                for i7 in range(max(0, (32 * i4)), min(N, ((32 * i4) + 32))) {
-                  for i8 in range(max((32 * i5), 0), min(((32 * i5) + 32), K)) {
-                    C[i6][i7] = ((beta * C[i6][i7]) + ((alpha * A[i6][i8]) * B[i8][i7]));
-                  }
-                }
-              }
-            }
-          }
+		int t1, t2, t3, t4, t5, t6, t7, t8;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (N &gt;= 1) {
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
+          S1(t2,t4,t5,t7);
+        }
+      }
+    }
+  }
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
+          S2(t2,t4,t5,t7);
+        }
+      }
+    }
+  }
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t3=32*t2;t3&lt;=min(N-1,32*t2+31);t3++) {
+      S3(t2,t3);
+    }
+  }
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
+          S4(t2,t4,t5,t7);
         }
       }
     }
   }
 }
+/* End of CLooG code */
 </pre>
 </main>
 </body>

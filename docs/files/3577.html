@@ -3,51 +3,106 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_unrolljam_route_guard.py</title>
+  <title>test_tiling_route_summary.py</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tools/artifact/test_unrolljam_route_guard.py</code></h1>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tools/artifact/test_tiling_route_summary.py</code></h1>
   <pre>#!/usr/bin/env python3
 from __future__ import annotations
 
-import sys
 import tempfile
-import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-
-from tools.artifact.explore_unrolljam_effect_corpus import (
-    tiling_validation_route_absent,
-)
+from run_artifact_check import CheckResult, build_tiling_route_summary
 
 
-class TilingRouteGuardTest(unittest.TestCase):
-    def test_checks_complete_stderr_not_only_tail(self) -&gt; None:
-        with tempfile.TemporaryDirectory() as tmp:
-            stderr_path = Path(tmp) / &quot;polopt.stderr.txt&quot;
-            stderr_path.write_text(
-                &quot;[tiling-validation] route=rejected\n&quot; + (&quot;x&quot; * 2400),
-                encoding=&quot;utf-8&quot;,
-            )
-            self.assertFalse(tiling_validation_route_absent(str(stderr_path)))
+def make_result(root: Path, name: str, stdout: str) -&gt; CheckResult:
+    stdout_path = root / f&quot;{name}.stdout.txt&quot;
+    stderr_path = root / f&quot;{name}.stderr.txt&quot;
+    stdout_path.write_text(stdout, encoding=&quot;utf-8&quot;)
+    stderr_path.write_text(&quot;&quot;, encoding=&quot;utf-8&quot;)
+    return CheckResult(
+        name=name,
+        command=[name],
+        returncode=0,
+        elapsed_seconds=0.0,
+        stdout_path=str(stdout_path),
+        stderr_path=str(stderr_path),
+    )
 
-    def test_accepts_stderr_without_tiling_route(self) -&gt; None:
-        with tempfile.TemporaryDirectory() as tmp:
-            stderr_path = Path(tmp) / &quot;polopt.stderr.txt&quot;
-            stderr_path.write_text(&quot;x&quot; * 2400, encoding=&quot;utf-8&quot;)
-            self.assertTrue(tiling_validation_route_absent(str(stderr_path)))
 
-    def test_missing_stderr_fails_closed(self) -&gt; None:
-        self.assertFalse(tiling_validation_route_absent(&quot;/missing/polopt.stderr.txt&quot;))
+def make_results(root: Path, direct_actual: int) -&gt; list[CheckResult]:
+    return [
+        make_result(
+            root,
+            &quot;direct-only-tiling-route-smoke&quot;,
+            &quot;[direct-route] PASS expected=20,fallbacks:0 &quot;
+            f&quot;actual={direct_actual},fallbacks:0 &quot;
+            &quot;interpretation=all-direct-route-contracts-matched\n&quot;,
+        ),
+        make_result(root, &quot;scalar-interleaved-tiling-route&quot;, &quot;PASS\n&quot;),
+        make_result(
+            root,
+            &quot;non-second-level-tiling-routes&quot;,
+            &quot;[non-second-level-routes] PASS &quot;
+            &quot;expected=permutable-band:84,fallbacks:0,vector-rejections:6 &quot;
+            &quot;actual=permutable-band:84,fallbacks:0,vector-rejections:6 &quot;
+            &quot;interpretation=all-one-level-route-contracts-matched\n&quot;,
+        ),
+        make_result(root, &quot;second-level-suite&quot;, &quot;PASS\n&quot;),
+        make_result(root, &quot;pluto-compat-suite&quot;, &quot;PASS\n&quot;),
+        make_result(
+            root,
+            &quot;strict-loop-suite&quot;,
+            &quot;tiling_validation_permutable_band=61\n&quot;
+            &quot;tiling_validation_not_applicable_no_loop=1\n&quot;
+            &quot;tiling_validation_fallback=0\n&quot;,
+        ),
+    ]
+
+
+def main() -&gt; int:
+    with tempfile.TemporaryDirectory(prefix=&quot;tiling-route-summary-unit-&quot;) as tmp:
+        root = Path(tmp)
+        valid = build_tiling_route_summary(make_results(root, direct_actual=20))
+        assert valid[&quot;verified&quot;] is True
+        assert valid[&quot;zero_tiling_validation_fallbacks&quot;] is True
+        assert valid[&quot;direct_route_smoke&quot;] == {
+            &quot;cases&quot;: 20,
+            &quot;zero_fallbacks&quot;: True,
+        }
+        assert valid[&quot;non_second_level&quot;] == {
+            &quot;cases&quot;: 90,
+            &quot;permutable_band&quot;: 84,
+            &quot;validation_fallback&quot;: 0,
+            &quot;explicit_vector_rejection&quot;: 6,
+        }
+        assert valid[&quot;strict_loop_corpus&quot;][&quot;verified&quot;] is True
+
+        mismatched = build_tiling_route_summary(
+            make_results(root, direct_actual=19)
+        )
+        assert mismatched[&quot;verified&quot;] is False
+        assert mismatched[&quot;zero_tiling_validation_fallbacks&quot;] is False
+        assert mismatched[&quot;direct_route_smoke&quot;] == {
+            &quot;cases&quot;: None,
+            &quot;zero_fallbacks&quot;: False,
+        }
+
+    print(
+        &quot;[tiling-route-summary-unit] PASS &quot;
+        &quot;expected=matching-counts-accepted,mismatched-counts-rejected &quot;
+        &quot;actual=matching-counts-accepted,mismatched-counts-rejected &quot;
+        &quot;interpretation=artifact-summary-parses-readable-route-logs-fail-closed&quot;
+    )
+    return 0
 
 
 if __name__ == &quot;__main__&quot;:
-    unittest.main()
+    raise SystemExit(main())
 </pre>
 </main>
 </body>

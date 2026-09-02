@@ -3,260 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CTypedLoopSamples.v</title>
+  <title>CSample3.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/samples/CTypedLoopSamples.v</code></h1>
-  <pre>(** * Typed C loop samples for the verified compiler pipelines
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/samples/CSample3.c</code></h1>
+  <pre>// gemver, Vector Multiplication and Matrix Addition
+// Link to examples to pluto&#x27;s examples: https://github.com/bondhugula/pluto/blob/eddc38537d61cd49d55e454831086848d51473d7/examples/gemver/gemver.c#L81
 
-    These examples deliberately start from [CPolIRs.Loop.t], not from the
-    instruction-free test instance used by the command-line syntax.  The C
-    fragments below are references for readers; PolCert currently has no C
-    parser in this path, so the corresponding [CInstr] trees are instantiated
-    by hand.  Each expression carries [int32s], and every program supplies a
-    concrete scalar/array type environment.
+#pragma scop
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            B[i][j] = A[i][j] + u1[i]*v1[j] + u2[i]*v2[j];
 
-    The extracted regression test sends these programs through the generic
-    Rocq-verified compiler endpoints.  For ISS it explicitly composes the
-    extracted validator and verified code generator so that a real split,
-    rather than selection of an ISS-enabled route, is observable.  Together
-    the cases exercise typed instruction access extraction before affine,
-    tiling, ISS, diamond, and parallel validation. *)
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            x[i] = x[i] + beta* B[j][i]*y[j];
 
-Require Import List.
-Require Import ZArith.
-Require Import AST.
-Require Import Cop.
-Require Import Integers.
-Require Import Values.
-Require Import Result.
-Require Import CPolIRs.
-Require Import CInstr.
-Require Import CTy.
-Require Import ExtractorFrontend.
 
-Import ListNotations.
-Open Scope Z_scope.
+    for (i=0; i&lt;N; i++)
+        x[i] = x[i] + z[i];
 
-Module Loop := CPolIRs.Loop.
-Module Instr := CPolIRs.Instr.
-Module Extract := ExtractorFrontend CPolIRs.
-
-(** ** Small typed-C construction library *)
-
-Definition i32 := CTy.int32s.
-Definition scalar_i32 : CTy.arrtype := CTy.arr_type_intro i32 [].
-Definition array_i32 (bounds : list Z) : CTy.arrtype :=
-  CTy.arr_type_intro i32 bounds.
-
-Definition ma_add (a b : Instr.ma_expr) : Instr.ma_expr :=
-  Instr.MAbinop Oadd a b.
-Definition ma_sub (a b : Instr.ma_expr) : Instr.ma_expr :=
-  Instr.MAbinop Osub a b.
-
-Definition access1 (id : ident) (i : Instr.ma_expr) : Instr.arr_access :=
-  Instr.Aarr id (Instr.MAsingleton i) i32.
-Definition access2
-    (id : ident) (i j : Instr.ma_expr) : Instr.arr_access :=
-  Instr.Aarr id (Instr.MAcons i (Instr.MAsingleton j)) i32.
-Definition access3
-    (id : ident) (i j k : Instr.ma_expr) : Instr.arr_access :=
-  Instr.Aarr id
-    (Instr.MAcons i (Instr.MAcons j (Instr.MAsingleton k))) i32.
-
-Definition load (a : Instr.arr_access) : Instr.expr := Instr.Eaccess a i32.
-Definition int_lit (z : Z) : Instr.expr :=
-  Instr.Eval (Vint (Int.repr z)) i32.
-Definition add (a b : Instr.expr) : Instr.expr := Instr.Ebinop Oadd a b i32.
-Definition mul (a b : Instr.expr) : Instr.expr := Instr.Ebinop Omul a b i32.
-
-(** Loop evaluation stores the innermost iterator first, whereas [CInstr]
-    arguments use source order: parameters first, then outer-to-inner
-    iterators.  This transformation reverses that environment explicitly. *)
-Definition source_order_arguments (n : nat) : list Loop.expr :=
-  map Loop.Var (rev (seq 0 n)).
-
-(** ** Independent two-dimensional kernel
-
-    Reference C:
-
-    [for (i = 0; i &lt; N; i++)
-       for (j = 0; j &lt; M; j++)
-         A[i][j] = B[i][j] + 1;]
-
-    This one source program is used for ordinary rectangular tiling and for
-    certified parallel/vector annotations.  Reusing the source isolates the
-    effect of the selected verified pipeline. *)
-
-Definition pw_N : ident := 1%positive.
-Definition pw_M : ident := 2%positive.
-Definition pw_A : ident := 3%positive.
-Definition pw_B : ident := 4%positive.
-
-Definition pointwise_instr : Instr.t :=
-  Instr.Iassign
-    (access2 pw_A (Instr.MAvarz 2) (Instr.MAvarz 3))
-    (add
-      (load (access2 pw_B (Instr.MAvarz 2) (Instr.MAvarz 3)))
-      (int_lit 1)).
-
-Definition c_loop_pointwise_2d : Loop.t :=
-  (Loop.Loop (Loop.Constant 0) (Loop.Var 1)
-     (Loop.Loop (Loop.Constant 0) (Loop.Var 1)
-       (Loop.Instr pointwise_instr (source_order_arguments 4))),
-   [pw_N; pw_M],
-   [(pw_N, scalar_i32);
-    (pw_M, scalar_i32);
-    (pw_A, array_i32 [128; 128]);
-    (pw_B, array_i32 [128; 128])]).
-
-(** ** Matrix multiplication for two-level tiling
-
-    Reference C:
-
-    [for (i = 0; i &lt; M; i++)
-       for (j = 0; j &lt; N; j++)
-         for (k = 0; k &lt; K; k++)
-           C[i][j] = C[i][j] + A[i][k] * B[k][j];]
-
-    The reduction makes this a more representative two-level tiling example
-    than a completely independent rectangular nest. *)
-
-Definition mm_M : ident := 1%positive.
-Definition mm_N : ident := 2%positive.
-Definition mm_K : ident := 3%positive.
-Definition mm_C : ident := 4%positive.
-Definition mm_A : ident := 5%positive.
-Definition mm_B : ident := 6%positive.
-
-Definition matmul_instr : Instr.t :=
-  Instr.Iassign
-    (access2 mm_C (Instr.MAvarz 3) (Instr.MAvarz 4))
-    (add
-      (load (access2 mm_C (Instr.MAvarz 3) (Instr.MAvarz 4)))
-      (mul
-        (load (access2 mm_A (Instr.MAvarz 3) (Instr.MAvarz 5)))
-        (load (access2 mm_B (Instr.MAvarz 5) (Instr.MAvarz 4))))).
-
-Definition c_loop_matmul : Loop.t :=
-  (Loop.Loop (Loop.Constant 0) (Loop.Var 2)
-     (Loop.Loop (Loop.Constant 0) (Loop.Var 2)
-       (Loop.Loop (Loop.Constant 0) (Loop.Var 2)
-         (Loop.Instr matmul_instr (source_order_arguments 6)))),
-   [mm_M; mm_N; mm_K],
-   [(mm_M, scalar_i32);
-    (mm_N, scalar_i32);
-    (mm_K, scalar_i32);
-    (mm_C, array_i32 [128; 128]);
-    (mm_A, array_i32 [128; 128]);
-    (mm_B, array_i32 [128; 128])]).
-
-(** ** Reverse access for index-set splitting
-
-    Reference C:
-
-    [for (i = 0; i &lt; N; i++)
-       A[i] = 2 * A[N - 1 - i];]
-
-    Pluto&#x27;s affine schedule needs an ISS split to expose the legal pieces of
-    this reversal. *)
-
-Definition ri_N : ident := 1%positive.
-Definition ri_A : ident := 2%positive.
-
-Definition reverse_index : Instr.ma_expr :=
-  ma_sub (ma_sub (Instr.MAvarz 0) (Instr.MAval 1)) (Instr.MAvarz 1).
-
-Definition reverse_iss_instr : Instr.t :=
-  Instr.Iassign
-    (access1 ri_A (Instr.MAvarz 1))
-    (mul (int_lit 2) (load (access1 ri_A reverse_index))).
-
-Definition c_loop_reverse_iss : Loop.t :=
-  (Loop.Loop (Loop.Constant 0) (Loop.Var 0)
-     (Loop.Instr reverse_iss_instr (source_order_arguments 2)),
-   [ri_N],
-   [(ri_N, scalar_i32); (ri_A, array_i32 [256])]).
-
-(** ** Time-space stencil for diamond tiling
-
-    Reference C:
-
-    [for (t = 5; t &lt; T - 1; t++)
-       for (i = 5; i &lt; N - 5; i++)
-         A[t + 1][i] = A[t][i - 1] + A[t - 2][i + 1];]
-
-    The two dependence vectors are [(1, 1)] and [(3, -1)].  This is Pluto&#x27;s
-    standard diamond example; its time/space dependences produce coupled
-    [(t+i)] and [(t-i)] wavefront hyperplanes. *)
-
-Definition ds_T : ident := 1%positive.
-Definition ds_N : ident := 2%positive.
-Definition ds_A : ident := 3%positive.
-
-Definition diamond_stencil_instr : Instr.t :=
-  Instr.Iassign
-    (access2 ds_A
-      (ma_add (Instr.MAvarz 2) (Instr.MAval 1))
-      (Instr.MAvarz 3))
-    (add
-      (load (access2 ds_A
-        (Instr.MAvarz 2)
-        (ma_sub (Instr.MAvarz 3) (Instr.MAval 1))))
-      (load (access2 ds_A
-        (ma_sub (Instr.MAvarz 2) (Instr.MAval 2))
-        (ma_add (Instr.MAvarz 3) (Instr.MAval 1))))).
-
-Definition c_loop_diamond_stencil : Loop.t :=
-  (Loop.Loop (Loop.Constant 5) (Loop.Sum (Loop.Var 1) (Loop.Constant (-1)))
-     (Loop.Loop (Loop.Constant 5) (Loop.Sum (Loop.Var 1) (Loop.Constant (-5)))
-       (Loop.Instr diamond_stencil_instr (source_order_arguments 4))),
-   [ds_T; ds_N],
-   [(ds_T, scalar_i32);
-    (ds_N, scalar_i32);
-    (ds_A, array_i32 [256; 256])]).
-
-(** ** Executable extraction checks
-
-    These computations make the typeful part of the examples a proof-build
-    obligation.  In particular, each extracted statement must retain a real C
-    instruction and nonempty memory accesses. *)
-
-Definition extracted_shape
-    (loop : Loop.t) (expected_depth writes reads : nat) : bool :=
-  match Extract.extractor loop with
-  | Okk ([pi], _, vars) =&gt;
-      Nat.eqb pi.(CPolIRs.PolyLang.pi_depth) expected_depth &amp;&amp;
-      Nat.eqb (length pi.(CPolIRs.PolyLang.pi_waccess)) writes &amp;&amp;
-      Nat.eqb (length pi.(CPolIRs.PolyLang.pi_raccess)) reads &amp;&amp;
-      Nat.ltb 0 (length vars)
-  | _ =&gt; false
-  end.
-
-Example pointwise_extracts_typed_accesses :
-  extracted_shape c_loop_pointwise_2d 2 1 1 = true.
-Proof. vm_compute. reflexivity. Qed.
-
-Example matmul_extracts_typed_accesses :
-  extracted_shape c_loop_matmul 3 1 3 = true.
-Proof. vm_compute. reflexivity. Qed.
-
-Example reverse_iss_extracts_typed_accesses :
-  extracted_shape c_loop_reverse_iss 1 1 1 = true.
-Proof. vm_compute. reflexivity. Qed.
-
-Example diamond_stencil_extracts_typed_accesses :
-  extracted_shape c_loop_diamond_stencil 2 1 2 = true.
-Proof. vm_compute. reflexivity. Qed.
-
-(** The OCaml regression test applies the already-extracted generic
-    [PolOptBandTiling] and [ParallelPolOpt] functors to [CPolIRs].  Keeping that
-    executable instantiation out of this definition file avoids rechecking the
-    large generic correctness functors during every proof build.  The applied
-    functions retain their generic Rocq correctness theorems. *)
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            w[i] = w[i] + alpha* B[i][j]*x[j];
+#pragma endscop
 </pre>
 </main>
 </body>

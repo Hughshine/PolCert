@@ -3,18 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/f5af53fc40c275/before.loop</code></h1>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/f5af53fc40c275/after.loop</code></h1>
   <pre>context(T, N);
 
-for i0 in range(5, (T + -1)) {
-  for i1 in range(5, (N + -5)) {
-    A[(i0 + 1)][i1] = (A[i0][(i1 - 1)] + A[(i0 - 2)][(i1 + 1)]);
+if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
+  for i0 in range(0, ((T + (N + 24)) / 32)) {
+    for i1 in range(max(max((((-2 * N) + ((32 * i0) + 12)) / 32), (((-32 * i0) + -21) / 32)), (((-2 * N) + 23) / 64)), min(min((((2 * T) + ((-32 * i0) + 28)) / 32), (((32 * i0) + 53) / 32)), (((2 * T) + 50) / 64))) {
+      for i2 in range(max(max(max(((-32 * i1) + -21), ((32 * i1) + 10)), 10), (32 * i0)), min(min(min(((2 * N) + ((32 * i1) + 20)), ((2 * T) + ((-32 * i1) + -3))), (T + (N + -7))), ((32 * i0) + 32))) {
+        for i3 in range(max(max((i2 + 5), ((-1 * T) + ((2 * i2) + 2))), (((-32 * i1) + ((3 * i2) + -30)) / 2)), min(min((N + (i2 + -5)), ((2 * i2) + -4)), (((-32 * i1) + ((3 * i2) + 2)) / 2))) {
+          for i4 in range(((2 * i2) + (-1 * i3)), ((2 * i2) + ((-1 * i3) + 1))) {
+            for i5 in range((i2 + (-1 * i4)), (i2 + ((-1 * i4) + 1))) {
+              A[(i4 + 1)][i5] = (A[i4][(i5 - 1)] + A[(i4 - 2)][(i5 + 1)]);
+            }
+          }
+        }
+      }
+    }
   }
 }
 </pre>

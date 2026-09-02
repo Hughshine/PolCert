@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>optimized.loop</title>
+  <title>input.pretty.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/optimized-loop-examples/fusion6/optimized.loop</code></h1>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/optimized-loop-examples/fusion6/input.pretty.loop</code></h1>
   <pre>context(N);
 
+for i0 in range(0, N) {
+  x[i0] = (a[i0] + b[i0]);
+}
 s = 0.0;
-if (1 &lt;= N) {
-  for i0 in range(0, N) {
-    x[i0] = (a[i0] + b[i0]);
-    s = (s + (x[i0] * 3));
-  }
+for i0 in range(0, N) {
+  s = (s + (x[i0] * 3));
 }
 </pre>
 </main>

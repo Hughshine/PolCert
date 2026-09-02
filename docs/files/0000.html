@@ -8,22 +8,44 @@
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/README.md</code></h1>
-  <pre># Evidence
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>environment/README.md</code></h1>
+  <pre># Build and Test Environment
 
-| Reviewer question | Start here | What it shows |
-| --- | --- | --- |
-| What do the optimized loops look like? | `optimized-loop-examples/index.html` | Side-by-side source and accepted Loop programs, with a diff for each case. |
-| Which transformations and options were tested? | `results/test-catalog.html` | Every case has its own page. Accepted cases show the source and optimized Loop programs, the observed optimization, the run settings, and whether both produced the same result. Other cases explain why no before/after run applies. |
-| Which compiler paths have end-to-end theorems? | `results/proof-report.md` | The theorem attached to each public route, plus checks for unfinished proofs and unrealized extraction axioms. |
-| Do accepted Loop programs produce the same result? | `results/test-catalog.html` | The audit covers every accepted pair record by executing each unique program and parameter configuration; duplicate records reuse that run. Each applicable page reports the parameters, run count, thread count where relevant, and whether the results agree. |
-| What performance did the accepted programs show? | `performance-comparisons/index.html` | Baseline and optimized times for all 62 generated whole-C kernels, with the selected checked route and measurement limits. |
-| What happens when the optimizer proposes an unsafe or non-certifiable result? | `rejected-optimizer-outputs/index.html` | Why each proposal cannot be accepted and whether PolCert rejects it or uses a certified fallback. |
+`Dockerfile` builds the two packaged Pluto source archives, the Rocq proofs,
+and the extracted compiler. From the archive root, run:
 
-Machine-readable summaries are in `summary.json`, `results/test-catalog.json`,
-and `results/run-results.json`. Command output is retained under `results/raw/`
-for diagnosis, but is not the primary presentation.
+```sh
+docker build -f environment/Dockerfile -t polcert-artifact .
+docker run --rm polcert-artifact
+```
+
+The build requires network access for Ubuntu and opam packages and requires an
+x86-64 Docker environment. Pluto itself is extracted and built from
+`third_party/pluto`; the build does not fetch an optimizer repository or use a
+prebuilt optimizer image.
+The Ubuntu base image is digest-pinned; apt and opam still use online package
+repositories.
+
+On the artifact preparation host, a cold build took about 40 minutes and the
+default checks took about 31 minutes. The final image was about 2.1 GB; hardware
+and cache state affect these values. On an ARM host, enable emulation and add
+`--platform linux/amd64` to the build command.
+
+The default command runs 25 compiler and executable checks. Other
+modes are:
+
+| Command | Work performed |
+| --- | --- |
+| `docker run --rm polcert-artifact full` | Run all 30 artifact checks. |
+| `docker run --rm polcert-artifact ci` | Run all seven CI test groups in sequence. |
+| `docker run --rm polcert-artifact bugs` | Run seven Pluto reliability checks, including the historical snapshot. |
+| `docker run --rm polcert-artifact proof` | Clean and rebuild the proofs, unfinished-proof gate, and extraction. |
+| `docker run --rm polcert-artifact all` | Run `full` and every CI test group; do not repeat `proof`. |
+| `docker run --rm -it polcert-artifact shell` | Open a shell in the built environment. |
+
+For a low-memory build, reduce `PLUTO_BUILD_JOBS`, `PROOF_JOBS`, or `BUILD_JOBS`
+with `docker build --build-arg NAME=VALUE ...`.
 </pre>
 </main>
 </body>

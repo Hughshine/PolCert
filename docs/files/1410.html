@@ -3,21 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/b8ddaaa7482ae9/before.loop</code></h1>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>evidence/results/program-comparisons/b8ddaaa7482ae9/after.loop</code></h1>
   <pre>context(n);
 
-for i0 in range(0, (2 * n)) {
-  c[i0] = 0;
+if ((-2 * n) &lt;= -1) {
+  for i0 in range(0, (((2 * n) + 31) / 32)) {
+    for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), (2 * n))) {
+      c[i1] = 0;
+    }
+  }
 }
-for i0 in range(0, n) {
-  for i1 in range(0, n) {
-    c[(i0 + i1)] = (c[(i0 + i1)] + (a[i0] * b[i1]));
+if ((-2 * n) &lt;= -2) {
+  for i0 in range(0, (((2 * n) + 30) / 32)) {
+    for i1 in range(max((((-1 * n) + ((32 * i0) + 1)) / 32), 0), min((((32 * i0) + 63) / 32), ((n + 31) / 32))) {
+      for i2 in range(max(max(0, (32 * i1)), (32 * i0)), min(min(((2 * n) + -1), (n + ((32 * i1) + 31))), ((32 * i0) + 32))) {
+        for i3 in range(max(max(0, ((-1 * n) + (i2 + 1))), (32 * i1)), min(min(n, (i2 + 1)), ((32 * i1) + 32))) {
+          for i4 in range((i2 + (-1 * i3)), (i2 + ((-1 * i3) + 1))) {
+            c[(i3 + i4)] = (c[(i3 + i4)] + (a[i3] * b[i4]));
+          }
+        }
+      }
+    }
   }
 }
 </pre>

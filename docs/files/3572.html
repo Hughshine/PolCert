@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>wavefront.loop</title>
+  <title>unrolljam_context_bound_escape.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/wavefront.loop</code></h1>
-  <pre>context(N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/unrolljam_context_bound_escape.loop</code></h1>
+  <pre>context(N, M, K);
 
 for i in range(1, N) {
-  for j in range(1, N) {
-    a[i][j] = (a[(i - 1)][j] + a[i][(j - 1)]);
+  for j in range(0, M) {
+    A[i][j] = (A[(i + -1)][K] + 1);
   }
 }
 </pre>
