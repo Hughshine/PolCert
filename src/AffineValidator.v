@@ -4413,16 +4413,18 @@ Qed.
 (** The direct permutable-band checker reasons about integer iteration
     points.  VPL's emptiness check is over rationals, so canonicalize the
     final guard intersection with [VplCanonizerZ] before asking VPL whether
-    it is empty.  This path is deliberately separate from the ordinary
-    affine validator. *)
+    it is empty.  Construct the conjunction with [poly_inter_pure] so that
+    only the final integer polyhedron is canonicalized.  This path is
+    deliberately separate from the ordinary affine validator. *)
 
 Definition validate_lt_ge_pair_integer
     (pol_lt pol_ge sameloc_enveq_indom_pol: polyhedron) :=
-  BIND sameloc_pol_lt <-
-    poly_inter pol_lt sameloc_enveq_indom_pol -;
-  BIND sameloc_pol_lt_ge <- poly_inter sameloc_pol_lt pol_ge -;
+  let combined :=
+    poly_inter_pure
+      (poly_inter_pure pol_lt sameloc_enveq_indom_pol)
+      pol_ge in
   BIND integer_pol <-
-    VplCanonizerZ.canonize sameloc_pol_lt_ge -;
+    VplCanonizerZ.canonize combined -;
   BIND isbot <- isBottom integer_pol -;
   pure isbot.
 
@@ -4441,8 +4443,6 @@ Proof.
   intros pol_old_lt pol_new_ge sameloc_enveq_indom_pol p1 p2
          res Hval Hres Hin Hlt Hge.
   unfold validate_lt_ge_pair_integer in Hval.
-  bind_imp_destruct Hval pol_lt Hpollt.
-  bind_imp_destruct Hval pol_ge Hpolge.
   bind_imp_destruct Hval integer_pol Hinteger.
   bind_imp_destruct Hval isbot Hisbot.
   subst res.
@@ -4451,16 +4451,9 @@ Proof.
   apply isBottom_correct_1 in Hisbot.
   specialize (Hisbot (p1 ++ p2)).
   rewrite VplCanonizerZ.canonize_correct in Hisbot; [|exact Hinteger].
-  eapply poly_inter_def with (p := p1 ++ p2) in Hpolge.
-  rewrite poly_inter_pure_def in Hpolge.
-  rewrite Hpolge in Hisbot.
-  rewrite andb_false_iff in Hisbot.
-  destruct Hisbot as [Hisbot | Hisbot]; [|congruence].
-  eapply poly_inter_def with (p := p1 ++ p2) in Hpollt.
-  rewrite poly_inter_pure_def in Hpollt.
-  rewrite Hpollt in Hisbot.
-  rewrite andb_false_iff in Hisbot.
-  destruct Hisbot; congruence.
+  repeat rewrite poly_inter_pure_def in Hisbot.
+  rewrite Hlt, Hin, Hge in Hisbot.
+  discriminate.
 Qed.
 
 Definition validate_two_accesses_helper_integer

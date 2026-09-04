@@ -114,14 +114,17 @@ Definition checked_tiling_sourceb_complete_direct_band_check
     checked_tiling_sourceb_first_direct_band_check before after ws -;
   if common_ok then pure true
   else
-    BIND phase_semantic_ok <-
-      Legacy.checked_tiling_sourceb_phase_semantic_band_direct
-        before after ws -;
-    if phase_semantic_ok then pure true
+    (* Rejecting a non-scalar-aware shape is a cheap structural check.  Trying
+       this route first avoids repeated permutability queries for scalar-aware
+       candidates. *)
+    BIND scalar_aware_ok <-
+      Legacy.checked_tiling_sourceb_scalar_aware_direct before after ws -;
+    if scalar_aware_ok then pure true
     else
-      BIND scalar_aware_ok <-
-        Legacy.checked_tiling_sourceb_scalar_aware_direct before after ws -;
-      if scalar_aware_ok then pure true
+      BIND phase_semantic_ok <-
+        Legacy.checked_tiling_sourceb_phase_semantic_band_direct
+          before after ws -;
+      if phase_semantic_ok then pure true
       else
         BIND phase_ordinary_ok <-
           Mixed.check_pprog_phase_separated_ordinary_direct before after ws -;
@@ -172,18 +175,18 @@ Proof.
   destruct common_ok.
   - eapply checked_tiling_sourceb_first_direct_band_check_sourceb_true.
     exact Hcommon.
-  - bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
-    destruct phase_semantic_ok.
-    + eapply
-        Legacy.checked_tiling_sourceb_phase_semantic_band_direct_sourceb_true.
-      exact Hphase_semantic.
-    + bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
-      destruct scalar_aware_ok.
-      * destruct
-          (Legacy.checked_tiling_sourceb_scalar_aware_direct_true_inv
-             before after ws Hscalar_aware)
-          as [layout [Hsource _]].
-        exact Hsource.
+  - bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
+    destruct scalar_aware_ok.
+    + destruct
+        (Legacy.checked_tiling_sourceb_scalar_aware_direct_true_inv
+           before after ws Hscalar_aware)
+        as [layout [Hsource _]].
+      exact Hsource.
+    + bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
+      destruct phase_semantic_ok.
+      * eapply
+          Legacy.checked_tiling_sourceb_phase_semantic_band_direct_sourceb_true.
+        exact Hphase_semantic.
       * bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
         destruct phase_ordinary_ok.
         -- destruct before as [[before_pis before_ctxt] before_vars].
@@ -435,16 +438,16 @@ Proof.
   bind_imp_destruct Hcheck common_ok Hcommon.
   destruct common_ok.
   - eapply checked_tiling_sourceb_first_direct_band_check_correct; eauto.
-  - bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
-    destruct phase_semantic_ok.
+  - bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
+    destruct scalar_aware_ok.
     + eapply
-        Legacy
-          .checked_tiling_sourceb_phase_semantic_band_direct_correct_same_ctxt;
+        Legacy.checked_tiling_sourceb_scalar_aware_direct_correct_same_ctxt;
         eauto.
-    + bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
-      destruct scalar_aware_ok.
+    + bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
+      destruct phase_semantic_ok.
       * eapply
-          Legacy.checked_tiling_sourceb_scalar_aware_direct_correct_same_ctxt;
+          Legacy
+            .checked_tiling_sourceb_phase_semantic_band_direct_correct_same_ctxt;
           eauto.
       * bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
         destruct phase_ordinary_ok.
