@@ -1,0 +1,13 @@
+context(T, M);
+
+for q in range(0, T) {
+  for p in range(0, 2) {
+    if (((2 * q) + p) <= (T - 1)) {
+      for i in range(0, (M + 1)) {
+        for j in range(0, (M + 1)) {
+          A[(1 - p)][i][j] = 0.125 * (((i == M) ? A[p][(0)][j] : A[p][(i + 1)][j])- 2.0 * A[p][i][j]+ (((i == 0)) ? A[p][(M)][j] : A[p][((i - 1))][j])) + 0.125 * (((j == M) ? A[p][i][(0)] : A[p][i][(j + 1)])- 2.0 * A[p][i][j]+ (((j == 0)) ? A[p][i][(M)] : A[p][i][((j - 1))])) + A[p][i][j];
+        }
+      }
+    }
+  }
+}

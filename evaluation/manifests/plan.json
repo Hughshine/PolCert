@@ -26,10 +26,10 @@
     },
     {
       "cohort": "iss-supplement",
-      "distinct_sources": 3,
+      "distinct_sources": 11,
       "manifest": "iss-supplement.json",
-      "manifest_sha256": "6bb5d1cfe7c15c56cf1711de532bd8ba60aa5796d0db842b4f7f1e83bb1b201c",
-      "pairs": 15,
+      "manifest_sha256": "92eba6d7bd84b875545a2a50a69992356021f029cdb23d8787c9ff837f93deaf",
+      "pairs": 55,
       "result_directory": "iss-supplement"
     },
     {
@@ -83,12 +83,11 @@
   ],
   "comparison": "independent Pluto baseline versus final PolCert output",
   "controls": [
-    "integer gaps 1, 3, and 2",
-    "two periodic phase-ISS sources"
+    "integer gaps 1, 3, and 2"
   ],
   "historical_pairs": 489,
   "iss_baseline_policy": "Native implicit defaults are made explicit: tiling, smart fusion, no intratile scheduling, no vectorization, no unroll-and-jam, no parallelization, and no diamond tiling. Other variants retain their requested route. Only --pluto-compat is native-only; ISS baseline diagnostics omit --dumpscop and add --moredebug.",
-  "iss_supplement_pairs": 15,
+  "iss_supplement_pairs": 55,
   "kernel_unit": "distinct source_sha256 within the reported cohort/effect",
   "native_seconds": 900,
   "native_workers": 2,

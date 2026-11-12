@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Compare genuine source-domain partitions in the three reverse ISS fixtures.
+"""Compare genuine source-domain partitions in the iss-supplement inputs.
 
-Both independently compiled outputs must split assignment sites at the same
-half-domain cut. The existing native fixture harness also checks each source
-iteration once and numerical results over ten odd/even boundary samples.
+Reverse inputs (`iss_review` absent or `half-domain`): both independently
+compiled outputs must split assignment sites at the same half-domain cut. The
+existing native fixture harness also checks each source iteration once and
+numerical results over ten odd/even boundary samples.
+
+Periodic phase-form inputs (`iss_review: periodic-phase`): both outputs must
+reproduce the source buffers bitwise with the same writes per cell, and each
+assignment site must update a single physical buffer, so the two time phases
+are separated. Samples cover empty and singleton domains and tile boundaries.
 """
 import argparse
 import hashlib
@@ -73,7 +79,7 @@ def expand_statement_macros(code):
     return '#define floord(a,b) polcert_z_div((a),(b))\n#define ceild(a,b) (-polcert_z_div(-(a),(b)))\n' + '\n'.join(result)
 
 
-def review_case(case, target, helper):
+def review_case(case, target, helper, periodic):
     raw = json.loads((case / 'result.json').read_text())
     selected = select_candidate(case)
     row = {'id': raw['id'], 'cohort': 'iss-supplement', 'effect': 'iss',
@@ -92,32 +98,43 @@ def review_case(case, target, helper):
         return row
     source = (case / 'source.loop').read_text()
     final = final_file.read_text().split('== Optimized Loop ==', 1)[1].strip()
+    original_transpiler = helper.transpile_loop_text
+    kind = raw.get('iss_review', 'half-domain')
+    if kind not in ('half-domain', 'periodic-phase'):
+        raise ValueError('Unknown ISS review kind: ' + kind)
+    row['iss_review'] = kind
     expanded = expand_statement_macros(producer_file.read_text())
     target.mkdir(parents=True, exist_ok=False)
     row['checks'] = []
-    original_transpiler = helper.transpile_loop_text
     for name, text in [('pluto', expanded), ('polcert', final)]:
         # Reuse the already-tested fixture checks. Only the Pluto side enters
         # as C; its statement macros have been expanded without changing bounds.
-        helper.transpile_loop_text = lambda value: expanded if value is expanded else original_transpiler(value)
-        try:
-            code, sites = helper.harness(source, text, raw['iss_rank'], raw['iss_cut_axis'])
-        finally:
-            helper.transpile_loop_text = original_transpiler
+        if kind == 'periodic-phase':
+            transpile = lambda value: expanded if value is expanded else original_transpiler(value)
+            code, sites, samples = periodic.phase_harness(source, text, transpile, helper.INTEGER_HELPERS_C)
+        else:
+            helper.transpile_loop_text = lambda value: expanded if value is expanded else original_transpiler(value)
+            try:
+                code, sites = helper.harness(source, text, raw['iss_rank'], raw['iss_cut_axis'])
+            finally:
+                helper.transpile_loop_text = original_transpiler
+            samples = 10
         c_file, binary = target / (name + '.c'), target / name
         c_file.write_text(code)
         command = ['gcc', '-O0', '-std=gnu11', str(c_file), '-o', str(binary)]
         built = subprocess.run(command, capture_output=True, text=True, timeout=15)
         (target / (name + '.build.stderr.txt')).write_text(built.stderr)
         check = {'side': name, 'build_command': command, 'build_returncode': built.returncode,
-                 'assignment_sites': sites, 'harness_sha256': sha(c_file)}
+                 'assignment_sites': sites, 'expected_samples': samples, 'harness_sha256': sha(c_file)}
         if built.returncode == 0:
-            observed = subprocess.run([str(binary)], capture_output=True, text=True, timeout=30)
+            observed = subprocess.run([str(binary)], capture_output=True, text=True,
+                                      timeout=120 if kind == 'periodic-phase' else 30)
             (target / (name + '.stdout.txt')).write_text(observed.stdout)
             (target / (name + '.stderr.txt')).write_text(observed.stderr)
             check.update(returncode=observed.returncode, complete_samples=len(observed.stdout.splitlines()))
         row['checks'].append(check)
-    if all(check.get('returncode') == 0 and check['complete_samples'] == 10 for check in row['checks']):
+    if all(check.get('returncode') == 0 and check['complete_samples'] == check['expected_samples']
+           for check in row['checks']):
         row['retention_status'] = 'paired-partition-retained'
         row['evidence_level'] = 'source-instance-partition-and-values'
     return row
@@ -133,12 +150,17 @@ def main():
     spec = importlib.util.spec_from_file_location('paired_native_iss_fixture', path)
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
+    periodic_path = args.source_root / 'tools/iss/run_periodic_iss_suite.py'
+    spec = importlib.util.spec_from_file_location('paired_periodic_iss_fixture', periodic_path)
+    periodic = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(periodic)
     args.output.mkdir(parents=True, exist_ok=False)
     report = {'measurement_run_sha256': sha(args.raw / 'run-provenance.json'),
-              'script_sha256': sha(Path(__file__)), 'fixture_harness_sha256': sha(path), 'rows': []}
+              'script_sha256': sha(Path(__file__)), 'fixture_harness_sha256': sha(path),
+              'periodic_harness_sha256': sha(periodic_path), 'rows': []}
     for record in sorted((args.raw / 'iss-supplement/cases').glob('*/result.json')):
         try:
-            row = review_case(record.parent, args.output / record.parent.name, helper)
+            row = review_case(record.parent, args.output / record.parent.name, helper, periodic)
         except (ValueError, OSError, subprocess.TimeoutExpired) as error:
             raw = json.loads(record.read_text())
             row = {'id': raw['id'], 'cohort': 'iss-supplement', 'effect': 'iss',

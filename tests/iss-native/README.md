@@ -28,8 +28,39 @@ Two alternative one-dimensional representations are retained for diagnosis:
 - `quotient` represents `t % 2` by an additional bounded quotient iterator.
   Pluto does not split it in the tested native configuration.
 
-These alternatives are not additional benchmarks. The additions are two
-distinct kernels: periodic Jacobi in one and two spatial dimensions.
+These alternatives are not additional benchmarks.
+
+## Evaluation Inputs from Pluto's ISS Tests
+
+The `iss-supplement` evaluation cohort uses the following inputs in addition
+to the reverse fixtures. Each is a computation from Pluto's `test/`
+directory on which Pluto's `--iss` performs a split.
+
+| Fixture | Pluto source | Representation |
+| --- | --- | --- |
+| `jacobi_1d_periodic_phase.loop` | `jacobi-1d-periodic.c` | phase form, `t = 2*q + p + 1` |
+| `jacobi_2d_periodic_phase.loop` | `jacobi-2d-periodic.c` | phase form, `t = 2*q + p + 1` |
+| `jacobi_1d_periodic_even_phase.loop` | `jacobi-1d-periodic-even.c` | phase form, `t = 2*q + p + 1`, extent `2*N` |
+| `jacobi_3d_periodic_phase.loop` | `jacobi-3d-periodic.c` | phase form, `t = 2*q + p + 1` |
+| `heat_2dp_phase.loop` | `heat-2dp.c` | phase form, `t = 2*q + p` (the source loop starts at `t = 0`) |
+| `multi_stmt_periodic_phase.loop` | `multi-stmt-periodic.c` | phase form, `t = 2*q + p + 1`, two statements |
+| `multi_stmt_2d_periodic_phase.loop` | `multi-stmt-2d-periodic.c` | phase form, `t = 2*q + p + 1`, two statements |
+| `bidirec_2d.loop` | `2d-bidirec.c` | direct conversion |
+
+The phase inputs follow the convention above: conditional subscripts become
+conditional reads, and `p` selects the source buffer. On this representation
+Pluto cuts the phase coordinate; on the original C it cuts spatial midpoints.
+The evaluation's ISS review (`evaluation/bin/review_paired_iss.py`) checks
+the phase inputs with `phase_harness` in `tools/iss/run_periodic_iss_suite.py`:
+bitwise-equal buffers, equal writes per cell, and one physical buffer per
+final assignment site, on samples that include empty and singleton domains
+and tile boundaries.
+
+`bidirec_2d.loop` is split by Pluto (cut `2j-N = 0`), and the split is
+accepted by PolCert's ISS check. Pluto then aborts when it re-reads the split
+program for scheduling (an assertion in its isl dependence extraction), so
+PolCert exits with status 2 and the evaluation records `native-failed` for all
+five configurations. The independent baseline, a single Pluto run, succeeds.
 
 `SInstr` conservatively includes reads from both branches of a conditional
 expression in its access summary. The `phase` representation therefore has
