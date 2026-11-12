@@ -82,5 +82,49 @@ let () =
     let huge = Camlcoq.Z.add (z max_int) (z 1) in
     let rel = { rel with OpenScopAST.meta_loc = ([huge;z 3;z 1;z 0;z 0;z 0], loc) } in
     OpenScopAST2OpenScop.type_check_relation rel; true);
+  (* Statement bodies printed by OpenScopPrinter must read back unchanged:
+     Pluto copies them into its output, and the tiling import compares the
+     re-read bodies with the original ones. *)
+  let cs = Camlcoq.coqstring_of_camlstring in
+  let acc a = OpenScop.ArrAccessAtom (OpenScop.ArrAccess (cs a, [OpenScop.AfVar (cs "i")])) in
+  let int n = OpenScop.ArrAtom (OpenScop.AInt (z n)) in
+  let i = OpenScop.ArrAccessAtom (OpenScop.ArrAccess (cs "i", [])) in
+  let cond = OpenScop.ArrCond (OpenScop.ArrEq (i, int 0), acc "B", acc "C") in
+  let lhs subs = OpenScop.ArrAccess (cs "A", subs) in
+  let roundtrip name ?(subs=[OpenScop.AfVar (cs "i")]) rhs =
+    check ("body-roundtrip-" ^ name) "accepted" (fun () ->
+      with_fixture (fixture 1 "WRITE") (fun path ->
+        match OpenScopReader.read path with
+        | None -> false
+        | Some scop ->
+            let body = OpenScop.StmtBody ([cs "i"], OpenScop.ArrAssign (lhs subs, rhs)) in
+            let stmt = { (List.hd scop.OpenScop.statements) with
+                         OpenScop.stmt_exts_opt = Some [body] } in
+            let out = Filename.temp_file "polcert-openscop-body-" ".scop" in
+            Fun.protect ~finally:(fun () -> Sys.remove out) (fun () ->
+              OpenScopPrinter.openscop_printer out
+                { scop with OpenScop.statements = [stmt] };
+              match OpenScopReader.read out with
+              | Some { OpenScop.statements = [s]; _ } ->
+                  s.OpenScop.stmt_exts_opt = Some [body]
+              | _ -> false)))
+  in
+  roundtrip "cond-left-of-plus" (OpenScop.ArrAdd (cond, acc "D"));
+  roundtrip "cond-right-of-plus" (OpenScop.ArrAdd (acc "D", cond));
+  roundtrip "cond-in-product" (OpenScop.ArrMulti (cond, OpenScop.ArrMinus (acc "D", acc "E")));
+  roundtrip "cond-top-level" (OpenScop.ArrCond (OpenScop.ArrLe (acc "B", acc "C"), acc "B", acc "C"));
+  roundtrip "nested-cond" (OpenScop.ArrCond (OpenScop.ArrLt (i, int 1), cond, OpenScop.ArrAdd (acc "C", int 1)));
+  roundtrip "comparison-of-sums" (OpenScop.ArrCond (OpenScop.ArrAnd (OpenScop.ArrLe (OpenScop.ArrAdd (acc "B", acc "C"), acc "D"), OpenScop.ArrLt (i, int 3)), acc "B", acc "C"));
+  roundtrip "minus-right-group" (OpenScop.ArrMinus (acc "B", OpenScop.ArrMinus (acc "C", acc "D")));
+  roundtrip "plus-right-group" (OpenScop.ArrAdd (acc "B", OpenScop.ArrAdd (acc "C", acc "D")));
+  roundtrip "div-right-group" (OpenScop.ArrDiv (acc "B", OpenScop.ArrMulti (acc "C", acc "D")));
+  roundtrip "product-of-sum" (OpenScop.ArrMulti (OpenScop.ArrAdd (acc "B", acc "C"), acc "D"));
+  roundtrip "negative-literals" (OpenScop.ArrMinus (OpenScop.ArrMulti (int (-2), acc "B"), int (-1)));
+  roundtrip "affine-subscript-groups"
+    ~subs:[OpenScop.AfMinus (OpenScop.AfVar (cs "i"),
+             OpenScop.AfMinus (OpenScop.AfVar (cs "i"), OpenScop.AfInt (z 1)));
+           OpenScop.AfMulti (OpenScop.AfInt (z 2),
+             OpenScop.AfAdd (OpenScop.AfVar (cs "i"), OpenScop.AfInt (z (-1))))]
+    (acc "B");
   Printf.printf "[openscop-parser] %d/%d passed\n%!" (!checks - !failures) !checks;
   if !failures <> 0 then exit 1

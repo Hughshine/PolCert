@@ -92,19 +92,31 @@ let context_printer out context =
   relation_printer out context.param_domain;
   ctxt_params_printer out context.params
 
-let rec aff_expr_str aff_expr = 
-  match aff_expr with 
+(* Printed expressions are read back by OpenScopParser, whose grammar only
+   declares the precedence of + - (lowest) and * / (both left-associative).
+   Parenthesize every operand the reader could regroup, so that printing and
+   re-reading yields the same tree.  Right operands of the same level keep
+   their parentheses because floating-point sums are not associative. *)
+let aff_expr_level = function
+  | OpenScop.AfAdd _ | OpenScop.AfMinus _ -> 1
+  | OpenScop.AfMulti _ | OpenScop.AfDiv _ -> 2
+  | OpenScop.AfInt _ | OpenScop.AfVar _ -> 3
+
+let rec aff_expr_str aff_expr =
+  let binop level op e1 e2 =
+    let s1 = aff_expr_str e1 and s2 = aff_expr_str e2 in
+    let s1 = if aff_expr_level e1 < level then "(" ^ s1 ^ ")" else s1 in
+    let s2 = if aff_expr_level e2 <= level then "(" ^ s2 ^ ")" else s2 in
+    s1 ^ op ^ s2
+  in
+  match aff_expr with
   | OpenScop.AfInt z -> Camlcoq.Z.to_string z
   | OpenScop.AfVar id -> Camlcoq.camlstring_of_coqstring id
-  | OpenScop.AfAdd (aff_expr1, aff_expr2) -> 
-      (aff_expr_str aff_expr1) ^ " + " ^ (aff_expr_str aff_expr2)
-  | OpenScop.AfMinus (aff_expr1, aff_expr2) -> 
-    (aff_expr_str aff_expr1) ^ " - " ^ (aff_expr_str aff_expr2)
-  | OpenScop.AfMulti (aff_expr1, aff_expr2) -> 
-    (aff_expr_str aff_expr1) ^ " * " ^ (aff_expr_str aff_expr2)
-  | OpenScop.AfDiv (aff_expr1, aff_expr2) -> 
-    (aff_expr_str aff_expr1) ^ " / " ^ (aff_expr_str aff_expr2)
-  
+  | OpenScop.AfAdd (aff_expr1, aff_expr2) -> binop 1 " + " aff_expr1 aff_expr2
+  | OpenScop.AfMinus (aff_expr1, aff_expr2) -> binop 1 " - " aff_expr1 aff_expr2
+  | OpenScop.AfMulti (aff_expr1, aff_expr2) -> binop 2 " * " aff_expr1 aff_expr2
+  | OpenScop.AfDiv (aff_expr1, aff_expr2) -> binop 2 " / " aff_expr1 aff_expr2
+
 
 let arr_access_str arr_access = 
 match arr_access with 
@@ -115,42 +127,50 @@ match arr_access with
    Camlcoq.camlstring_of_coqstring id_str ^ affs_str
 
 
-let rec arr_expr_str arr_expr = 
-  match arr_expr with 
-  | OpenScop.ArrAtom atom -> 
+(* Comparison, conjunction and conditional operators have no declared
+   precedence in the reader, so their compound operands are always
+   parenthesized, as is any of them used as an operand. *)
+let arr_expr_level = function
+  | OpenScop.ArrAdd _ | OpenScop.ArrMinus _ -> 1
+  | OpenScop.ArrMulti _ | OpenScop.ArrDiv _ -> 2
+  | OpenScop.ArrAtom _ | OpenScop.ArrAccessAtom _ | OpenScop.ArrCall _ -> 3
+  | OpenScop.ArrLt _ | OpenScop.ArrLe _ | OpenScop.ArrEq _
+  | OpenScop.ArrAnd _ | OpenScop.ArrCond _ -> 0
+
+let rec arr_expr_str arr_expr =
+  let wrap_if b s = if b then "(" ^ s ^ ")" else s in
+  let arith level op e1 e2 =
+    wrap_if (arr_expr_level e1 < level) (arr_expr_str e1) ^ op
+    ^ wrap_if (arr_expr_level e2 <= level) (arr_expr_str e2)
+  in
+  let operand e = wrap_if (arr_expr_level e < 3) (arr_expr_str e) in
+  let logic op e1 e2 = operand e1 ^ op ^ operand e2 in
+  match arr_expr with
+  | OpenScop.ArrAtom atom ->
     (
-      match atom with 
+      match atom with
       | OpenScop.AInt z -> Camlcoq.Z.to_string z
       | OpenScop.AVar id -> Camlcoq.camlstring_of_coqstring id
       | OpenScop.AFloat f -> Float.to_string (Camlcoq.camlfloat_of_coqfloat f)
       | OpenScop.AFloatLiteral f -> Camlcoq.camlstring_of_coqstring f
-    )  
-  | OpenScop.ArrAccessAtom (arr_access) -> 
-      arr_access_str arr_access 
-  | OpenScop.ArrAdd (arr_expr1, arr_expr2) -> 
-    (arr_expr_str arr_expr1) ^ " + " ^ (arr_expr_str arr_expr2)
-  | OpenScop.ArrMinus (arr_expr1, arr_expr2) -> 
-    (arr_expr_str arr_expr1) ^ " - " ^ (arr_expr_str arr_expr2)
-  | OpenScop.ArrMulti (arr_expr1, arr_expr2) -> 
-    (arr_expr_str arr_expr1) ^ " * " ^ (arr_expr_str arr_expr2)
-  | OpenScop.ArrDiv (arr_expr1, arr_expr2) -> 
-    (arr_expr_str arr_expr1) ^ " / " ^ (arr_expr_str arr_expr2)
-  | OpenScop.ArrLt (arr_expr1, arr_expr2) -> 
-    (arr_expr_str arr_expr1) ^ " < " ^ (arr_expr_str arr_expr2)
-  | OpenScop.ArrLe (arr_expr1, arr_expr2) -> 
-    (arr_expr_str arr_expr1) ^ " <= " ^ (arr_expr_str arr_expr2)
-  | OpenScop.ArrEq (arr_expr1, arr_expr2) ->
-    (arr_expr_str arr_expr1) ^ " == " ^ (arr_expr_str arr_expr2)
-  | OpenScop.ArrAnd (arr_expr1, arr_expr2) ->
-    (arr_expr_str arr_expr1) ^ " && " ^ (arr_expr_str arr_expr2)
-  | OpenScop.ArrCond (arr_expr1, arr_expr2, arr_expr3) -> 
-    (arr_expr_str arr_expr1) ^ " ? " ^ (arr_expr_str arr_expr2) ^ " : " ^ (arr_expr_str arr_expr3)
-  | OpenScop.ArrCall (id, arr_exprs) -> 
-    let id_str = Camlcoq.camlstring_of_coqstring id in 
+    )
+  | OpenScop.ArrAccessAtom (arr_access) ->
+      arr_access_str arr_access
+  | OpenScop.ArrAdd (arr_expr1, arr_expr2) -> arith 1 " + " arr_expr1 arr_expr2
+  | OpenScop.ArrMinus (arr_expr1, arr_expr2) -> arith 1 " - " arr_expr1 arr_expr2
+  | OpenScop.ArrMulti (arr_expr1, arr_expr2) -> arith 2 " * " arr_expr1 arr_expr2
+  | OpenScop.ArrDiv (arr_expr1, arr_expr2) -> arith 2 " / " arr_expr1 arr_expr2
+  | OpenScop.ArrLt (arr_expr1, arr_expr2) -> logic " < " arr_expr1 arr_expr2
+  | OpenScop.ArrLe (arr_expr1, arr_expr2) -> logic " <= " arr_expr1 arr_expr2
+  | OpenScop.ArrEq (arr_expr1, arr_expr2) -> logic " == " arr_expr1 arr_expr2
+  | OpenScop.ArrAnd (arr_expr1, arr_expr2) -> logic " && " arr_expr1 arr_expr2
+  | OpenScop.ArrCond (arr_expr1, arr_expr2, arr_expr3) ->
+    operand arr_expr1 ^ " ? " ^ operand arr_expr2 ^ " : " ^ operand arr_expr3
+  | OpenScop.ArrCall (id, arr_exprs) ->
+    let id_str = Camlcoq.camlstring_of_coqstring id in
     if List.length arr_exprs = 0 then id_str ^ "()" else
-    let arrs_str = (List.fold_left (fun str arr_expr -> str ^ "," ^ (arr_expr_str arr_expr)) "" (List.tl arr_exprs)) in 
-    id_str ^ "(" ^ (arr_expr_str (List.hd arr_exprs)) ^ arrs_str ^ ")" 
-  (* TODO: condition expression *)
+    let arrs_str = (List.fold_left (fun str arr_expr -> str ^ "," ^ (arr_expr_str arr_expr)) "" (List.tl arr_exprs)) in
+    id_str ^ "(" ^ (arr_expr_str (List.hd arr_exprs)) ^ arrs_str ^ ")"
 
 let arr_instr_string arr_instr = 
   match arr_instr with 
