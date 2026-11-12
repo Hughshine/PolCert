@@ -671,7 +671,7 @@ def main(argv: list[str]) -> int:
             )
             return 2
         try:
-            before_text, after_text = split_combined_debug_dump(Path(args[0]).read_text())
+            before_text, after_text = split_combined_debug_dump(Path(args[0]).read_text(errors="replace"))
             before = parse_program(before_text)
             after = parse_program(after_text)
             _, payload = collect_iss_structure(before, after)
@@ -690,8 +690,8 @@ def main(argv: list[str]) -> int:
             file=sys.stderr,
         )
         return 2
-    before = parse_program(Path(args[0]).read_text())
-    after = parse_program(Path(args[1]).read_text())
+    before = parse_program(Path(args[0]).read_text(errors="replace"))
+    after = parse_program(Path(args[1]).read_text(errors="replace"))
     try:
         messages, payload = collect_iss_structure(before, after)
     except Exception as ex:

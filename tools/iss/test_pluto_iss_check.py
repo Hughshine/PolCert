@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """ISS bridge lexer regressions, including identifiers emitted by PolCert."""
+import contextlib
+import io
 from pathlib import Path
 import re
+import tempfile
 import unittest
 
 from pluto_iss_check import (Constraint, Program, Stmt, collect_var_order,
-                            constraint_to_domain_rows, parse_affine,
+                            constraint_to_domain_rows, main, parse_affine,
                             parse_program, collect_iss_structure)
 
 
@@ -73,6 +76,22 @@ class IssLexerTests(unittest.TestCase):
                 after = (data / (name + '_after.txt')).read_text()
                 _, payload = collect_iss_structure(parse_program(before), parse_program(after))
                 self.assertIn('bridge', payload)
+
+    def test_combined_dump_with_undecodable_debug_bytes(self):
+        # Pluto's --moredebug output can print uninitialized multiplier names
+        # (observed on jacobi-3d-periodic). The bridge must still be recovered.
+        data = Path(__file__).resolve().parents[2] / 'tests/iss-pluto-dumps'
+        before = (data / 'reverse_before.txt').read_bytes()
+        after = (data / 'reverse_after.txt').read_bytes()
+        noise = b'[pluto] eliminating multiplier 0 (c_\x83) from 30 constraints\n'
+        with tempfile.TemporaryDirectory() as directory:
+            combined = Path(directory) / 'combined.txt'
+            combined.write_bytes(noise + before + after)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = main(['pluto_iss_check.py', '--emit-bridge-from-combined', str(combined)])
+        self.assertEqual(code, 0, output.getvalue())
+        self.assertIn('AFTER_STMTS', output.getvalue())
 
 
 if __name__ == '__main__':
