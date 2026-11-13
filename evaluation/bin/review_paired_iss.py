@@ -10,6 +10,11 @@ Periodic phase-form inputs (`iss_review: periodic-phase`): both outputs must
 reproduce the source buffers bitwise with the same writes per cell, and each
 assignment site must update a single physical buffer, so the two time phases
 are separated. Samples cover empty and singleton domains and tile boundaries.
+
+Directly converted inputs (`iss_review: source-values`): both outputs must
+reproduce the source arrays bitwise with the same writes per cell over sizes
+from empty to beyond the tile size, and must keep more assignment sites than
+the source.
 """
 import argparse
 import hashlib
@@ -100,7 +105,7 @@ def review_case(case, target, helper, periodic):
     final = final_file.read_text().split('== Optimized Loop ==', 1)[1].strip()
     original_transpiler = helper.transpile_loop_text
     kind = raw.get('iss_review', 'half-domain')
-    if kind not in ('half-domain', 'periodic-phase'):
+    if kind not in ('half-domain', 'periodic-phase', 'source-values'):
         raise ValueError('Unknown ISS review kind: ' + kind)
     row['iss_review'] = kind
     expanded = expand_statement_macros(producer_file.read_text())
@@ -109,9 +114,10 @@ def review_case(case, target, helper, periodic):
     for name, text in [('pluto', expanded), ('polcert', final)]:
         # Reuse the already-tested fixture checks. Only the Pluto side enters
         # as C; its statement macros have been expanded without changing bounds.
-        if kind == 'periodic-phase':
+        if kind in ('periodic-phase', 'source-values'):
             transpile = lambda value: expanded if value is expanded else original_transpiler(value)
-            code, sites, samples = periodic.phase_harness(source, text, transpile, helper.INTEGER_HELPERS_C)
+            observe = periodic.phase_harness if kind == 'periodic-phase' else periodic.value_harness
+            code, sites, samples = observe(source, text, transpile, helper.INTEGER_HELPERS_C)
         else:
             helper.transpile_loop_text = lambda value: expanded if value is expanded else original_transpiler(value)
             try:
@@ -128,7 +134,7 @@ def review_case(case, target, helper, periodic):
                  'assignment_sites': sites, 'expected_samples': samples, 'harness_sha256': sha(c_file)}
         if built.returncode == 0:
             observed = subprocess.run([str(binary)], capture_output=True, text=True,
-                                      timeout=120 if kind == 'periodic-phase' else 30)
+                                      timeout=30 if kind == 'half-domain' else 120)
             (target / (name + '.stdout.txt')).write_text(observed.stdout)
             (target / (name + '.stderr.txt')).write_text(observed.stderr)
             check.update(returncode=observed.returncode, complete_samples=len(observed.stdout.splitlines()))
@@ -136,7 +142,8 @@ def review_case(case, target, helper, periodic):
     if all(check.get('returncode') == 0 and check['complete_samples'] == check['expected_samples']
            for check in row['checks']):
         row['retention_status'] = 'paired-partition-retained'
-        row['evidence_level'] = 'source-instance-partition-and-values'
+        row['evidence_level'] = ('source-values-and-writes' if kind == 'source-values'
+                                 else 'source-instance-partition-and-values')
     return row
 
 

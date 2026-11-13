@@ -329,6 +329,89 @@ def phase_harness(source,optimized,transpile,helpers):
     return code,final_sites,len(times)*len(sizes)
 
 
+def value_harness(source,optimized,transpile,helpers):
+    """Generic observer for directly converted ISS inputs.
+
+    Every parameter takes the same sample size. Each sample runs the source
+    and the candidate from the same initial arrays and requires bitwise-equal
+    arrays and equal write counts per cell, so every source instance that
+    writes a distinct cell executes exactly once. The candidate must have more
+    assignment sites than the source, so the split survives.
+    """
+    context=re.search(r'^\s*context\(([^)]*)\)',source,re.M)
+    if not context:raise ValueError('input has no context')
+    parameters=[name.strip() for name in context[1].split(',') if name.strip()]
+    if not parameters:raise ValueError('expected a size parameter')
+    arrays={}
+    for line in logical_lines(transpile(source)):
+        for match in re.finditer(r'\b([A-Za-z_]\w*)\[',line):
+            position,rank=match.end()-1,0
+            while position<len(line) and line[position]=='[':
+                depth=0
+                for end in range(position,len(line)):
+                    depth+=(line[end]=='[')-(line[end]==']')
+                    if depth==0:break
+                else:raise ValueError('unbalanced subscript')
+                rank+=1;position=end+1
+            arrays.setdefault(match[1],rank)
+    if not arrays or max(arrays.values())>3:raise ValueError('expected arrays of rank 1 to 3')
+    sizes=[0,1,2,3,4,5,7,8,31,32,33,63,64,65,97]
+    extent=max(sizes)+2
+    element='double' if re.search(r'\d\.\d',source) else 'unsigned long long'
+    names=list(arrays)
+
+    def instrumented(text):
+        lines=[];sites=0
+        for line in logical_lines(transpile(text)):
+            found=split_assignment(line)
+            if found:
+                indent,array,subscripts,_=found
+                if array not in arrays or len(subscripts)!=arrays[array]:raise ValueError('unexpected assignment target '+array)
+                coordinates=(subscripts+['0']*3)[:3]
+                arguments=','.join('(long long)(%s)'%c for c in coordinates)
+                lines.append('%s{ wr(%d,%s); %s }'%(indent,names.index(array),arguments,line.strip()));sites+=1
+            else:lines.append(line)
+        return '\n'.join(lines),sites
+
+    original,original_sites=instrumented(source)
+    final,final_sites=instrumented(optimized)
+    if final_sites<2 or final_sites<=original_sites or final_sites>4096:
+        raise ValueError('expected split assignment sites, got %d'%final_sites)
+    shape=lambda array:'[%d]'%extent*arrays[array]
+    index=lambda array:''.join('[%s]'%v for v in 'xyz'[:arrays[array]])
+    loops=lambda array:''.join('for(long long %s=0;%s<%d;%s++)'%(v,v,extent,v) for v in 'xyz'[:arrays[array]])
+    signature=', '.join('long long '+name for name in parameters)
+    call=', '.join('S' for _ in parameters)
+    code='#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <limits.h>\n'
+    code+='#define min(a,b) ((a)<(b)?(a):(b))\n#define max(a,b) ((a)>(b)?(a):(b))\n'
+    for array in names:
+        code+='static %s %s%s,%s_expected%s;\nstatic int %s_writes%s,%s_expected_writes%s;\n'%(
+            element,array,shape(array),array,shape(array),array,shape(array),array,shape(array))
+    code+='static void wr(int id,long long x,long long y,long long z){\n'
+    code+='  if(x<0||x>=%d||y<0||y>=%d||z<0||z>=%d)exit(31);\n  switch(id){\n'%(extent,extent,extent)
+    for number,array in enumerate(names):
+        code+='  case %d:%s_writes%s++;break;\n'%(number,array,index(array))
+    code+='  default:exit(32);\n  }\n}\n'
+    code+='static void init(void){\n'
+    for number,array in enumerate(names):
+        value=('(double)((x*7+y*5+z*3+%d)%%17)*0.25+1.0' if element=='double' else '(unsigned long long)((x*131+y*17+z*7+%d+1)%%1009)')%number
+        unused=''.join('long long %s=0;(void)%s;'%(v,v) for v in 'xyz'[arrays[array]:])
+        code+='  %s{%s%s%s=%s;}\n'%(loops(array),unused,array,index(array),value)
+        code+='  memset(%s_writes,0,sizeof %s_writes);\n'%(array,array)
+    code+='}\n'+helpers
+    code+='\nstatic void original(%s) {\n%s\n}\nstatic void optimized(%s) {\n%s\n}\n'%(signature,original,signature,final)
+    code+='int main(void){\n  long long sizes[]={%s};int samples=0;\n'%','.join(map(str,sizes))
+    code+='  for(int s=0;s<%d;s++){\n    long long S=sizes[s];\n'%len(sizes)
+    code+='    init();original(%s);\n'%call
+    for array in names:
+        code+='    memcpy(%s_expected,%s,sizeof %s);memcpy(%s_expected_writes,%s_writes,sizeof %s_writes);\n'%((array,)*6)
+    code+='    init();optimized(%s);\n'%call
+    for array in names:
+        code+='    if(memcmp(%s_expected,%s,sizeof %s))return 33;\n    if(memcmp(%s_expected_writes,%s_writes,sizeof %s_writes))return 34;\n'%((array,)*6)
+    code+='    printf("S=%lld exact_values=true writes_match=true\\n",S);samples++;\n  }\n  return 0;\n}\n'
+    return code,final_sites,len(sizes)
+
+
 def review_split_calls(rows,root,polopt,env):
     for row in rows:
         for call in row['invocations']:

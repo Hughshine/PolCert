@@ -8,7 +8,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/end_to_end_c'))
 from loop_to_c import INTEGER_HELPERS_C,transpile_loop_text
-from run_periodic_iss_suite import harness,harness_2d,phase_harness
+from run_periodic_iss_suite import harness,harness_2d,phase_harness,value_harness
 
 
 class PeriodicHarnessTests(unittest.TestCase):
@@ -97,6 +97,52 @@ class PhaseHarnessTests(unittest.TestCase):
 
     def test_wrong_wraparound_rejected(self):
         self.assertNotEqual(self.run_check(PHASE_SPLIT.replace('u[0][(N - 1)] :','u[0][0] :'))[0],0)
+
+
+
+BIDIREC_SPLIT='''context(N);
+
+for i in range(1, N) {
+  for j in range(0, N) {
+    if ((2 * j) <= (N - 1)) {
+      a[i][j] = (a[i][j] + (a[(i - 1)][j] + a[(i - 1)][((N - 1) - j)]));
+    }
+    if (N <= (2 * j)) {
+      a[i][j] = (a[i][j] + (a[(i - 1)][j] + a[(i - 1)][((N - 1) - j)]));
+    }
+  }
+}
+'''
+
+
+class ValueHarnessTests(unittest.TestCase):
+    """The evaluation's observer for directly converted ISS inputs."""
+    def run_check(self,optimized):
+        source=(ROOT/'tests/iss-native/bidirec_2d.loop').read_text()
+        code,_,samples=value_harness(source,optimized,transpile_loop_text,INTEGER_HELPERS_C)
+        with tempfile.TemporaryDirectory(prefix='value-iss-check-') as temporary:
+            directory=Path(temporary);(directory/'check.c').write_text(code)
+            build=subprocess.run(['cc','-O0','-std=gnu11',str(directory/'check.c'),'-o',str(directory/'check')],capture_output=True,text=True)
+            self.assertEqual(build.returncode,0,build.stderr)
+            run=subprocess.run([str(directory/'check')],capture_output=True,text=True)
+            return run.returncode,len(run.stdout.splitlines()),samples
+
+    def test_faithful_split_accepted(self):
+        returncode,complete,samples=self.run_check(BIDIREC_SPLIT)
+        self.assertEqual((returncode,complete),(0,samples))
+
+    def test_unsplit_candidate_rejected(self):
+        source=(ROOT/'tests/iss-native/bidirec_2d.loop').read_text()
+        with self.assertRaisesRegex(ValueError,'expected split assignment sites'):
+            value_harness(source,source,transpile_loop_text,INTEGER_HELPERS_C)
+
+    def test_overlapping_halves_rejected(self):
+        self.assertNotEqual(self.run_check(BIDIREC_SPLIT.replace('if (N <= (2 * j))','if ((N - 1) <= (2 * j))'))[0],0)
+
+    def test_wrong_mirrored_read_rejected(self):
+        wrong=BIDIREC_SPLIT.replace('a[(i - 1)][((N - 1) - j)]));\n    }\n  }','a[(i - 1)][j]));\n    }\n  }')
+        self.assertNotEqual(wrong,BIDIREC_SPLIT)
+        self.assertNotEqual(self.run_check(wrong)[0],0)
 
 
 if __name__=='__main__':unittest.main()

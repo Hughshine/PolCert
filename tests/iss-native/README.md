@@ -61,6 +61,10 @@ accepted by PolCert's ISS check. Pluto then aborts when it re-reads the split
 program for scheduling (an assertion in its isl dependence extraction), so
 PolCert exits with status 2 and the evaluation records `native-failed` for all
 five configurations. The independent baseline, a single Pluto run, succeeds.
+Its review (`iss_review: source-values`, `value_harness` in
+`tools/iss/run_periodic_iss_suite.py`) requires both outputs to reproduce the
+source array bitwise, with the same writes per cell, for sizes from 0 to 97,
+and to keep more assignment sites than the source.
 
 `SInstr` conservatively includes reads from both branches of a conditional
 expression in its access summary. The `phase` representation therefore has

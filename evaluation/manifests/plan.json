@@ -28,7 +28,7 @@
       "cohort": "iss-supplement",
       "distinct_sources": 11,
       "manifest": "iss-supplement.json",
-      "manifest_sha256": "92eba6d7bd84b875545a2a50a69992356021f029cdb23d8787c9ff837f93deaf",
+      "manifest_sha256": "8c19234f9069a6a18f9da13c569628f81c0c1bc2af178547793defcecb3e7561",
       "pairs": 55,
       "result_directory": "iss-supplement"
     },
