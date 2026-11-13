@@ -57,10 +57,11 @@ final assignment site, on samples that include empty and singleton domains
 and tile boundaries.
 
 `bidirec_2d.loop` is split by Pluto (cut `2j-N = 0`), and the split is
-accepted by PolCert's ISS check. Pluto then aborts when it re-reads the split
-program for scheduling (an assertion in its isl dependence extraction), so
-PolCert exits with status 2 and the evaluation records `native-failed` for all
-five configurations. The independent baseline, a single Pluto run, succeeds.
+accepted by PolCert's ISS check. When Pluto re-reads the split program for
+scheduling, one dependence exists only for odd `N`. The fixed Pluto projects
+this parity condition out of the dependence polytope (dependence extraction in
+the fork's `FIXES.md`); earlier revisions aborted on an assertion in isl
+dependence extraction, and PolCert exited with status 2.
 Its review (`iss_review: source-values`, `value_harness` in
 `tools/iss/run_periodic_iss_suite.py`) requires both outputs to reproduce the
 source array bitwise, with the same writes per cell, for sizes from 0 to 97,

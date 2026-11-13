@@ -1,7 +1,7 @@
 # Keep these defaults aligned with tools/ci/pluto-baseline.env.
 ARG PLUTO_IMAGE=hughshine/pluto-verif@sha256:0e15a7614af280b02ab0dc31f110c3ee3f7a1fe3ee3d1b503cc3400d87b4f4ce
 ARG PLUTO_GIT_REMOTE=https://github.com/verif-scop/pluto.git
-ARG PLUTO_GIT_COMMIT=9fce0fc476a957955f0cc61a300f6dc10aaa67b4
+ARG PLUTO_GIT_COMMIT=8f180cefd38ce7559a250195f8f6f74e6477a276
 ARG PLUTO_BUGGY_GIT_REMOTE=https://github.com/verif-scop/pluto.git
 ARG PLUTO_BUGGY_GIT_COMMIT=3d04f2afae960bc45886440d2135614e47c73899
 ARG PLUTO_BUGGY_ROOT=/opt/polcert/pluto-buggy
