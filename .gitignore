@@ -162,6 +162,8 @@ log.txt
 !tools/tiling_routes/fixtures/diamond-tile-example.posttile.scop
 !tools/tiling_routes/fixtures/nonpermutable-band.midtransform.scop
 !tools/tiling_routes/fixtures/nonpermutable-band.posttile.scop
+!tests/polcert-require/dfp-skew.before.scop
+!tests/polcert-require/dfp-skew.after.scop
 .outfilename
 .regtile
 .srcfilename

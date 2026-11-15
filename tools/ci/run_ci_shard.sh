@@ -29,6 +29,9 @@ case "$shard" in
     ci_run_timed scalar-interleaved \
       python3 /polcert/tools/tiling_routes/check_scalar_interleaved_fusion.py \
         --polcert /polcert/polcert
+    ci_run_timed polcert-require \
+      python3 /polcert/tools/regression/check_polcert_require.py \
+        --polcert /polcert/polcert
     ci_run_timed legacy-tests bash /polcert/tools/ci/run_legacy_tests.sh
     ci_run_timed legacy-failure-gate \
       opam exec --switch=polcert -- make test-legacy-failure-gate

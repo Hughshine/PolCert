@@ -54,6 +54,7 @@ ci_run_timed python-syntax \
     /polcert/tools/regression/proof_report.py \
     /polcert/tools/regression/compare_rar_policy.py \
     /polcert/tools/regression/run_regression_suite.py \
+    /polcert/tools/regression/check_polcert_require.py \
     /polcert/tools/regression/test_tiling_route_summary.py \
     /polcert/tools/polopt_flag_suites/manifest_runner.py \
     /polcert/tools/polopt_flag_suites/run_pluto_compat_suite.py \

@@ -13,6 +13,20 @@ type validation_kind =
   | Kind_affine
   | Kind_tiling
 
+(* Refinement required for exit status 0 by the two-input affine mode. *)
+type requirement =
+  | Req_equiv
+  | Req_refines
+  | Req_refined_by
+
+let default_requirement = Req_refines
+
+type affine_relation_result =
+  | Rel_eq
+  | Rel_gt
+  | Rel_lt
+  | Rel_ne
+
 type file_mode =
   | Pair_mode of string * string
   | Phase_mode of string * string * string
@@ -27,7 +41,7 @@ let pluto_tiling_mode second_level =
 
 let usage prog =
   Printf.sprintf
-    "Usage:\n  %s [--kind auto|affine|tiling] [--second-level-tile] <before.scop> <after.scop>\n  %s [--kind auto|affine|tiling] [--second-level-tile] <before.scop> <mid.scop> <after.scop>\n  %s [--kind auto|affine|tiling] [--second-level-tile] <before.scop> <mid.scop> <posttile.scop> <after.scop>\n  %s --iss-bridge <bridge.txt>\n  %s --iss-debug-dumps <before.txt> <after.txt>\n\nAliases:\n  --auto      : same as --kind auto\n  --affine    : same as --kind affine\n  --tiling    : same as --kind tiling\n\nTwo-input mode:\n  auto   : try affine validation first, then tiling validation\n  affine : run affine validation on before/after\n  tiling : run tiling validation on before/after\n\nThree-input mode:\n  auto   : run affine(before, mid), then tiling(mid, after)\n  affine : run affine(before, mid) only\n  tiling : run tiling(mid, after) only\n\nFour-input mode:\n  auto   : run affine(before, mid), tiling(mid, posttile), affine(posttile, after)\n  affine : run affine(before, mid) and affine(posttile, after)\n  tiling : run tiling(mid, posttile) only\n\nOptions:\n  --second-level-tile : enable dependency-aware witness canonicalization and\n                        raw-order to canonical-order import alignment for tiling modes\n\nISS modes:\n  --iss-bridge      : delegate to polopt --validate-iss-bridge\n  --iss-debug-dumps : delegate to polopt --validate-iss-debug-dumps\n"
+    "Usage:\n  %s [--kind auto|affine|tiling] [--require equiv|refines|refined-by] [--second-level-tile] <before.scop> <after.scop>\n  %s [--kind auto|affine|tiling] [--second-level-tile] <before.scop> <mid.scop> <after.scop>\n  %s [--kind auto|affine|tiling] [--second-level-tile] <before.scop> <mid.scop> <posttile.scop> <after.scop>\n  %s --iss-bridge <bridge.txt>\n  %s --iss-debug-dumps <before.txt> <after.txt>\n\nAliases:\n  --auto      : same as --kind auto\n  --affine    : same as --kind affine\n  --tiling    : same as --kind tiling\n\nTwo-input mode:\n  auto   : run affine validation on before/after; if neither schedule\n           refines the other, run tiling validation instead\n  affine : run affine validation on before/after\n  tiling : run tiling validation on before/after\n  Affine results: [EQ] each schedule refines the other, [GT] after refines\n  before, [LT] before refines after, [NE] neither.\n\nThree-input mode:\n  auto   : run affine(before, mid), then tiling(mid, after)\n  affine : run affine(before, mid) only\n  tiling : run tiling(mid, after) only\n\nFour-input mode:\n  auto   : run affine(before, mid), tiling(mid, posttile), affine(posttile, after)\n  affine : run affine(before, mid) and affine(posttile, after)\n  tiling : run tiling(mid, posttile) only\n\nOptions:\n  --require : affine result required for exit status 0 in two-input mode\n              refines    : [GT] or [EQ] (default); after refines before. This\n                           is the target-to-source direction that polopt checks.\n              equiv      : [EQ] only; mainly useful in the affine two-input mode\n              refined-by : [LT] or [EQ]; before refines after\n              Tiling and multi-input modes support only refines.\n  --second-level-tile : enable dependency-aware witness canonicalization and\n                        raw-order to canonical-order import alignment for tiling modes\n\nISS modes:\n  --iss-bridge      : delegate to polopt --validate-iss-bridge\n  --iss-debug-dumps : delegate to polopt --validate-iss-debug-dumps\n"
     prog prog prog prog prog
 
 let string_of_coq_err msg = Camlcoq.camlstring_of_coqstring msg
@@ -40,6 +54,17 @@ let kind_of_string = function
   | "affine" -> Kind_affine
   | "tiling" -> Kind_tiling
   | s -> invalid_arg ("unknown validation kind: " ^ s)
+
+let requirement_of_string = function
+  | "equiv" -> Req_equiv
+  | "refines" -> Req_refines
+  | "refined-by" -> Req_refined_by
+  | s -> invalid_arg ("unknown --require value: " ^ s)
+
+let string_of_requirement = function
+  | Req_equiv -> "equiv"
+  | Req_refines -> "refines"
+  | Req_refined_by -> "refined-by"
 
 let resolve_tool_or_fail name =
   let exe_dir =
@@ -259,29 +284,57 @@ let run_tiling_pair ~second_level before_path after_path =
   in
   (ok, res, route)
 
-let print_affine_relation before_path after_path =
-  let (ok1, res1, ok2, res2) = affine_relation before_path after_path in
-  if ok1 && res1 && ok2 && res2 then begin
-    Printf.printf
-      "[EQ] The supplied schedules (%s, %s) refine each other under their trusted domain/access summaries; statement bodies are not checked.\n"
-      before_path after_path;
-    true
-  end else if ok1 && res1 then begin
-    Printf.printf
-      "[GT] Schedule %s refines %s under the supplied trusted domain/access summaries.\n"
-      after_path before_path;
-    true
-  end else if ok2 && res2 then begin
-    Printf.printf
-      "[LT] Schedule %s refines %s under the supplied trusted domain/access summaries.\n"
-      before_path after_path;
-    true
-  end else begin
-    Printf.printf
-      "[NE] Cannot establish schedule refinement between %s and %s under the supplied domain/access summaries.\n"
-      before_path after_path;
-    false
-  end
+let classify_affine_relation (ok1, res1, ok2, res2) =
+  (* ok1 && res1: after refines before; ok2 && res2: before refines after. *)
+  let after_refines = ok1 && res1 and before_refines = ok2 && res2 in
+  if after_refines && before_refines then Rel_eq
+  else if after_refines then Rel_gt
+  else if before_refines then Rel_lt
+  else Rel_ne
+
+let requirement_accepts requirement relation =
+  match requirement, relation with
+  | _, Rel_eq -> true
+  | Req_refines, Rel_gt -> true
+  | Req_refined_by, Rel_lt -> true
+  | _, _ -> false
+
+let print_affine_relation requirement before_path after_path relation =
+  begin match relation with
+  | Rel_eq ->
+      Printf.printf
+        "[EQ] The supplied schedules (%s, %s) refine each other under their trusted domain/access summaries; statement bodies are not checked.\n"
+        before_path after_path
+  | Rel_gt ->
+      Printf.printf
+        "[GT] Schedule %s refines %s under the supplied trusted domain/access summaries.\n"
+        after_path before_path
+  | Rel_lt ->
+      Printf.printf
+        "[LT] Schedule %s refines %s under the supplied trusted domain/access summaries.\n"
+        before_path after_path
+  | Rel_ne ->
+      Printf.printf
+        "[NE] Cannot establish schedule refinement between %s and %s under the supplied domain/access summaries.\n"
+        before_path after_path
+  end;
+  let accepted = requirement_accepts requirement relation in
+  if not accepted then begin
+    match requirement with
+    | Req_equiv ->
+        Printf.printf
+          "[REQUIRE-FAIL] --require equiv needs %s and %s to refine each other.\n"
+          before_path after_path
+    | Req_refines ->
+        Printf.printf
+          "[REQUIRE-FAIL] --require refines needs %s to refine %s.\n"
+          after_path before_path
+    | Req_refined_by ->
+        Printf.printf
+          "[REQUIRE-FAIL] --require refined-by needs %s to refine %s.\n"
+          before_path after_path
+  end;
+  accepted
 
 let print_tiling_result ~second_level before_path after_path =
   let (ok, res, route) = run_tiling_pair ~second_level before_path after_path in
@@ -306,6 +359,7 @@ let run_iss_dumps before_file after_file =
 
 let parse_args () =
   let kind = ref Kind_auto in
+  let requirement = ref None in
   let second_level = ref false in
   let files = ref [] in
   let iss_bridge = ref None in
@@ -331,6 +385,14 @@ let parse_args () =
       | "--tiling" ->
           kind := Kind_tiling;
           go (i + 1)
+      | "--require" ->
+          if i + 1 >= Array.length Sys.argv then begin
+            prerr_endline "option --require expects equiv, refines, or refined-by";
+            prerr_endline (usage Sys.argv.(0));
+            exit 2
+          end;
+          requirement := Some (requirement_of_string Sys.argv.(i + 1));
+          go (i + 2)
       | "--second-level-tile" ->
           second_level := true;
           go (i + 1)
@@ -377,20 +439,24 @@ let parse_args () =
         prerr_endline (usage Sys.argv.(0));
         exit 2
   in
-  (!kind, !second_level, mode)
+  (!kind, !requirement, !second_level, mode)
 
-let run_pair kind second_level before_path after_path =
+let run_pair kind requirement second_level before_path after_path =
   match kind with
   | Kind_affine ->
-      print_affine_relation before_path after_path
+      print_affine_relation requirement before_path after_path
+        (classify_affine_relation (affine_relation before_path after_path))
   | Kind_tiling ->
       print_tiling_result ~second_level before_path after_path
   | Kind_auto ->
-      let (ok1, res1, ok2, res2) = affine_relation before_path after_path in
-      if (ok1 && res1) || (ok2 && res2) then
-        print_affine_relation before_path after_path
-      else
-        print_tiling_result ~second_level before_path after_path
+      match classify_affine_relation (affine_relation before_path after_path) with
+      | Rel_ne ->
+          if requirement <> Req_refines then
+            Printf.printf
+              "[NOTE] Neither schedule refines the other as an affine schedule; tiling validation checks only that %s refines %s.\n"
+              after_path before_path;
+          print_tiling_result ~second_level before_path after_path
+      | relation -> print_affine_relation requirement before_path after_path relation
 
 let run_phase kind second_level before_path mid_path after_path =
   match kind with
@@ -497,7 +563,7 @@ let _ =
         Gc.minor_heap_size = 524288;
         Gc.major_heap_increment = 4194304;
       };
-    let (kind, second_level, mode) = parse_args () in
+    let (kind, requested_requirement, second_level, mode) = parse_args () in
     begin
       match mode with
       | Iss_bridge_mode _ | Iss_dump_mode _ when second_level ->
@@ -506,6 +572,22 @@ let _ =
           exit 2
       | _ -> ()
     end;
+    begin
+      match mode, kind, requested_requirement with
+      | (Iss_bridge_mode _ | Iss_dump_mode _), _, Some _ ->
+          prerr_endline "--require does not apply to ISS validation modes";
+          prerr_endline (usage Sys.argv.(0));
+          exit 2
+      | (Phase_mode _ | Diamond_phase_mode _), _, Some ((Req_equiv | Req_refined_by) as r)
+      | Pair_mode _, Kind_tiling, Some ((Req_equiv | Req_refined_by) as r) ->
+          Printf.eprintf
+            "--require %s does not apply here: tiling and multi-input validation check only that the transformed model refines its source (--require refines)\n"
+            (string_of_requirement r);
+          prerr_endline (usage Sys.argv.(0));
+          exit 2
+      | _ -> ()
+    end;
+    let requirement = Option.value requested_requirement ~default:default_requirement in
     if second_level && kind = Kind_affine then begin
       prerr_endline "--second-level-tile cannot be combined with --kind affine";
       prerr_endline (usage Sys.argv.(0));
@@ -518,7 +600,7 @@ let _ =
       | Iss_dump_mode (before_file, after_file) ->
           exit (run_iss_dumps before_file after_file)
       | Pair_mode (before_path, after_path) ->
-          run_pair kind second_level before_path after_path
+          run_pair kind requirement second_level before_path after_path
       | Phase_mode (before_path, mid_path, after_path) ->
           run_phase kind second_level before_path mid_path after_path
       | Diamond_phase_mode (before_path, mid_path, posttile_path, after_path) ->
