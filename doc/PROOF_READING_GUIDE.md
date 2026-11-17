@@ -388,6 +388,8 @@ Primary files:
   support interface used by the checked proof;
 - [`src/ParallelCodegenCorrect.v`](../src/ParallelCodegenCorrect.v): certificate ownership, actual-trace
   ordering, refinement, and checked endpoints;
+- [`src/ParallelCodegenDisjoint.v`](../src/ParallelCodegenDisjoint.v): access disjointness of distinct
+  iterations of generated parallel loops;
 - [`src/ParallelCodegen.v`](../src/ParallelCodegen.v): compatibility facade only;
 - [`driver/ParallelPolOptCorrect.v`](../driver/ParallelPolOptCorrect.v)
 
@@ -396,7 +398,9 @@ schedule coordinate. Two instances are in the same parallel slice when they
 have the same parameter environment, the same padded timestamp prefix before
 `d`, and different values at `d`. The property requires every such pair to
 commute. The older flatten-list property and theorem names remain compatibility
-corollaries.
+corollaries. `parallel_disjoint_dim_pointwise pp d` strengthens the conclusion
+to Bernstein disjointness of the cells each pair actually reads and writes;
+`checked_parallelize_current_disjoint` derives it from acceptance.
 
 `check_pprog_parallel_currentb` reduces this property to an affine validation
 query between two synthetic schedule views built from the actual padded

@@ -86,6 +86,11 @@ schedule coordinate, the [parallel validator](../src/ParallelValidator.v#L649)
 compares instances with the same
 enclosing prefix and different values at that coordinate. Such instances must
 commute. A successful check produces a certificate for annotated code generation.
+Acceptance also implies that such instances have no conflicting accesses
+([`checked_parallelize_current_disjoint`](../src/ParallelValidator.v#L1553)),
+and generated parallel loops inherit this for distinct iterations
+([`annotated_codegen_many_raw_par_siblings_disjoint`](../src/ParallelCodegenDisjoint.v#L837)),
+so certified loops are free of data races between iterations.
 
 A hint may apply to only some statements. The driver translates a scoped hint
 into a schedule proposal, which undergoes affine validation before the

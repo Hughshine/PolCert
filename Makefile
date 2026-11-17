@@ -159,7 +159,7 @@ POLCERT_SRC = Base.v Convert.v \
   OpenScop.v OpenScopAST.v PolyBase.v PolyLang.v \
   SelectionSort.v StablePermut.v CState.v AffineValidator.v \
   ParallelValidator.v JamValidator.v LoopJamTrace.v LoopJamFusion.v LoopJamNative.v LoopJamValidator.v LoopJamLower.v LoopJamContext.v LoopJamBridge.v RawCodegenOrigin.v \
-  ParallelCodegenCore.v ParallelCodegenCompatibility.v ParallelCodegenCorrect.v ParallelCodegen.v \
+  ParallelCodegenCore.v ParallelCodegenCompatibility.v ParallelCodegenCorrect.v ParallelCodegenDisjoint.v ParallelCodegen.v \
   PointWitness.v ISSWitness.v ISSRefinement.v \
   ISSBoolChecker.v ISSValidator.v ISSSemantics.v \
   ISSCutSemantics.v ISSValidatorCorrect.v \
@@ -623,6 +623,7 @@ PROOF_DOC_FILES = \
   src/TilingBandDirectRuntime.v \
   polygen/ParallelLoop.v src/ParallelValidator.v src/RawCodegenOrigin.v \
   src/ParallelCodegenCore.v src/ParallelCodegenCompatibility.v src/ParallelCodegenCorrect.v \
+  src/ParallelCodegenDisjoint.v \
   polygen/CodeGen.v polygen/LoopStride.v polygen/LoopUnroll.v driver/VerifiedLoopPostpass.v \
   src/LoopJamTrace.v src/LoopJamFusion.v src/LoopJamNative.v src/LoopJamValidator.v \
   src/LoopJamLower.v src/LoopJamContext.v src/LoopJamBridge.v \
