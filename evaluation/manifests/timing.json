@@ -14,7 +14,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -37,7 +37,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -60,7 +60,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -83,7 +83,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -106,7 +106,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -129,7 +129,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -152,7 +152,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -175,7 +175,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -198,7 +198,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -221,7 +221,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -244,7 +244,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -267,7 +267,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -290,7 +290,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -313,7 +313,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -336,7 +336,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -359,7 +359,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -382,7 +382,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -405,7 +405,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -428,7 +428,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -451,7 +451,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -474,7 +474,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -497,7 +497,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -520,7 +520,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -543,7 +543,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -566,7 +566,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -589,7 +589,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -612,7 +612,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -635,7 +635,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -658,7 +658,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -681,7 +681,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -704,7 +704,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -727,7 +727,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -750,7 +750,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -773,7 +773,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -796,7 +796,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -819,7 +819,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -842,7 +842,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -865,7 +865,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -888,7 +888,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -911,7 +911,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -934,7 +934,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -957,7 +957,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -980,7 +980,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1003,7 +1003,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1026,7 +1026,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [],
       "scalar_no_loop_exception": true,
@@ -1047,7 +1047,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1070,7 +1070,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1093,7 +1093,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1116,7 +1116,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1139,7 +1139,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1162,7 +1162,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1185,7 +1185,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1208,7 +1208,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1231,7 +1231,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1254,7 +1254,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1277,7 +1277,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1300,7 +1300,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1323,7 +1323,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1346,7 +1346,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1369,7 +1369,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1392,7 +1392,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
@@ -1415,7 +1415,7 @@
         "--noprevector",
         "--nounrolljam",
         "--nodiamond-tile",
-        "--noparallel"
+        "--parallel"
       ],
       "polopt_args": [
         "--parallel"
