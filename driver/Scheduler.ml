@@ -174,6 +174,7 @@ let resolve_repo_file rel =
   let candidates =
     [ rel;
       Filename.concat (Sys.getcwd ()) rel;
+      Filename.concat (Filename.dirname Sys.executable_name) rel;
       Filename.concat "/polcert" rel ]
   in
   match List.find_opt Sys.file_exists candidates with
